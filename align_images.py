@@ -7,7 +7,7 @@ import os
 
 
 def align_images(image, template, method="surf", norm=cv2.NORM_L2, maxFeatures=500, keepPercent=0.2,
-    debug=False):
+    debug=False, debug_image_name = ""):
     imageGray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     templateGray = cv2.cvtColor(template, cv2.COLOR_BGR2GRAY)
 
@@ -41,8 +41,10 @@ def align_images(image, template, method="surf", norm=cv2.NORM_L2, maxFeatures=5
         matchedVis = cv2.drawMatches(image, kpsA, template, kpsB,
             matches, None)
         matchedVis = imutils.resize(matchedVis, width=1000)
-        cv2.imshow("Matched Keypoints", matchedVis)
-        cv2.waitKey(0)
+        # cv2.imshow("Matched Keypoints", matchedVis)
+        # cv2.waitKey(0)
+        cv2.imwrite(debug_image_name, matchedVis)
+
 
     # Allocate memory for the keypoints (x,y-coordinates) from the
     # top matches -- we'll use these coordinates to compute our
@@ -70,33 +72,55 @@ def align_images(image, template, method="surf", norm=cv2.NORM_L2, maxFeatures=5
 def main():
     # image = cv2.imread(args["image"])
     # template = cv2.imread(args["template"])
-    # image = cv2.imread("./images/tasmani_coastsnap1.jpg")
-    # template = cv2.imread("./images/tasmani_coastsnap2.jpg")
 
-    # image_path = "./images/tasmani_coastsnap3.jpg"
-    # template_path = "./images/tasmani_coastsnap4.jpg"
+    # image_path = "./images/tasmani_coastsnap1.jpg"
+    # template_path = "./images/tasmani_coastsnap2.jpg"
+
+    # image_path = "./images/narrabeen_coastsnap1.jpg"
+    # template_path = "./images/narrabeen_coastsnap2.jpg"
+    # image_path = "./images/palombaggia1.jpg"
+    # template_path = "./images/palombaggia2.jpg"
+
+    # image_path = "./images/torpedobay_coastsnap1.jpg"
+    # template_path = "./images/torpedobay_coastsnap2.jpg"
+
+    # image_path = "./images/bresil_coastsnap1.jpg"
+    # template_path = "./images/bresil_coastsnap2.jpg"
+
+    # image_path = "./images/bresil2_coastsnap1.jpg"
+    # template_path = "./images/bresil2_coastsnap3.jpg"
 
     # image_path = "./images/narrabeen_coastsnap2.jpg"
     # template_path = "./images/narrabeen_coastsnap3.jpg"
-    image_path = "./images/palombaggia1.jpg"
-    template_path = "./images/palombaggia2.jpg"
 
-    # image_path = "./images/narrabeen_coastsnap2.jpg"
-    # template_path = "./images/narrabeen_coastsnap3.jpg"
+    # image_path = "./images/morbihan_coastsnap1.jpg"
+    # template_path = "./images/morbihan_coastsnap5.jpg"
+
+    # image_path = "./images/20201122_165550_min.jpg"
+    image_path = "./images/20201212_152639.jpg"
+    template_path = "./images/20201125_121544.jpg"
+
     image_name = os.path.splitext(os.path.basename(image_path))[0]
     template_name = os.path.splitext(os.path.basename(template_path))[0]
     image = cv2.imread(image_path)
     template = cv2.imread(template_path)
 
+    debug = True
     method_name = "sift"
-    norm_name = "L2"
+    norm_name = "L1"
     if norm_name == "L1":
         norm=cv2.NORM_L1
     if norm_name == "L2":
         norm=cv2.NORM_L2
 
+    debug_image_name = f"{image_name}_{template_name}_{method_name}_{norm_name}_descriptors_matching.jpg"
+
+    image = imutils.resize(image, width=1000)
+    template = imutils.resize(template, width=1000)
+
+
     print("[INFO] aligning images...")
-    aligned = align_images(image, template, method=method_name, norm=norm, debug=False)
+    aligned = align_images(image, template, method=method_name, norm=norm, debug=debug, debug_image_name=debug_image_name)
 
     image = imutils.resize(image, width=700)
     aligned = imutils.resize(aligned, width=700)
