@@ -5,7 +5,7 @@ import cv2
 import os
 import math
 from numpy import linalg as LA
-
+import json
 import glob
 
 def align_images(image, template, method="SIFT", norm_name="L2", keepPercent=0.3, debug=False):
@@ -71,9 +71,10 @@ def align_images(image, template, method="SIFT", norm_name="L2", keepPercent=0.3
 
 
 def batch_test(debug):
-    # folder_path = "./images/Lacanau_Kayok_VueNord"
+    folder_path = "./images/Lacanau_Kayok_VueNord"
+    # folder_path = "./images/Lacanau_Kayok_VueNord (copie)"
     # folder_path = "./images/SaintJeanDeLuz_Lafitenia_VueNord"
-    folder_path = "./images/Capbreton_Santocha_VueSud"
+    # folder_path = "./images/Capbreton_Santocha_VueSud"
     out_path = folder_path.replace("./images", "./results")
     try:
         os.makedirs(out_path)    
@@ -81,24 +82,25 @@ def batch_test(debug):
     except FileExistsError:
         pass
     
-    # template_path = "./images/Lacanau_Kayok_VueNord/20201204_144234.jpg"
+    template_path = "./images/Lacanau_Kayok_VueNord/20201204_144234.jpg"
     # template_path = "./images/SaintJeanDeLuz_Lafitenia_VueNord/20210308_111406.jpg"
-    template_path = "./images/Capbreton_Santocha_VueSud/IMG_20210409_101128.jpg"
+    # template_path = "./images/Capbreton_Santocha_VueSud/IMG_20210409_101128.jpg"
     template_name = os.path.splitext(os.path.basename(template_path))[0]
     template = cv2.imread(template_path)
     template_min = imutils.resize(template, width=950)
     print(f"Template name {template_name}")
 
-    
+    scores = {}
     for image_path in glob.glob(folder_path +'/*.jpg'):
-        first_run = True
         image_name = os.path.splitext(os.path.basename(image_path))[0]
         print("-----------------")
         print(f"Aligning image {image_name}")
     
         if image_path == template_path:
+            print("Template, skipping")
             pass
         else:
+            scores[image_name] = {}
             image = cv2.imread(image_path)
             best_method_name = "SIFT"
             best_norm_name = "L2"
@@ -115,8 +117,38 @@ def batch_test(debug):
             if best_homo_norm < 600:
                 print(f"Image {image_name} aligned with {best_method_name}, {best_norm_name} with score {best_homo_norm}")
                 cv2.imwrite(f"{out_path}/{image_name}_{template_name}_aligned.jpg", best_aligned)
+                scores[image_name] = {
+                    "success":True, 
+                    "homography_norm_value": best_homo_norm, 
+                    "method": best_method_name, 
+                    "norm":best_norm_name, 
+                    "template":template_name
+                }
             else:
-                 print(f"Failed to align image {image_name}...")
+                print(f"Failed to align image {image_name}...")
+                scores[image_name] = {
+                    "success":False, 
+                    "homography_norm_value": best_homo_norm, 
+                    "template":template_name
+                }
+            with open(out_path + '/scores.json', 'w') as outfile:
+                json.dump(scores, outfile)
+
+    with open(out_path + '/scores.json') as json_file:
+        scores = json.load(json_file)
+
+        values = []
+        for item in scores.items():
+            print(item)
+            values.append(item[1]["homography_norm_value"])
+        scores["stats"] = {
+            "min": np.min(values),
+            "max": np.max(values),
+            "mean": np.mean(values),
+            "median": np.median(values)
+        }
+        with open(out_path + '/scores.json', 'w') as outfile:
+            json.dump(scores, outfile)
 
 
 def align_and_write(image, template, template_min, image_name, template_name, method_name, norm_name, out_path, debug):
