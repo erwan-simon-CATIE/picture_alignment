@@ -11,7 +11,7 @@ from shutil import copyfile
 import time
 
 
-def align_images(image, template, method="SIFT", norm_name="L2", keep_percent=0.3, threshold_dist=1.5, debug=False):
+def align_images(image, template, method="SIFT", norm_name="L2", keep_percent=0.3, threshold_dist=1.5):
     
     imageGray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     templateGray = cv2.cvtColor(template, cv2.COLOR_BGR2GRAY)
@@ -52,13 +52,14 @@ def align_images(image, template, method="SIFT", norm_name="L2", keep_percent=0.
     matches = matches[:keep]
 
     # Allocate memory for the keypoints (x,y-coordinates) from the top matches
-    #   -- we'll use these coordinates to compute our homography matrix
+    #   -- these coordinates will be used to compute our homography matrix
     ptsA = np.zeros((len(matches), 2), dtype="float")
     ptsB = np.zeros((len(matches), 2), dtype="float")
 
     heightA, widthA, channelsA = image.shape
     heightB, widthB, channelsB = template.shape
     matches_filtered = []
+    sum_dist = 0
     # Loop over the top matches
     for (i, m) in enumerate(matches):
         ptA = kpsA[m.queryIdx].pt
@@ -68,21 +69,37 @@ def align_images(image, template, method="SIFT", norm_name="L2", keep_percent=0.
         ptBx = ptB[0] / widthB
         ptBy = ptB[1] / heightB        
         dist = math.sqrt((ptAx - ptBx)**2 + (ptAy - ptBy)**2)
+        sum_dist += dist
         # print(i, ptsA[i], ptsB[i], (ptAx, ptAy), (ptBx, ptBy), dist)
         if dist < threshold_dist:
             # Indicate that the two keypoints in the respective images  map to each other
+            # if ptAy > 0.7 or ptBy > 0.7: #North Narrabeen fix that does not work
+            #     pass
+            # else:
             ptsA[i] = ptA
             ptsB[i] = ptB
             matches_filtered.append(m)
+    nb_keypoints = len(matches)
+    if nb_keypoints > 0:
+        mean_dist = sum_dist/nb_keypoints
+    else:
+        mean_dist = 1
 
     # print(f"Number of keypoints: {len(matches)}, {len(matches_filtered)}")
     matchedVis = cv2.drawMatches(image, kpsA, template, kpsB, matches_filtered, None)
     matchedVis = imutils.resize(matchedVis, width=1900)
 
     # Compute the homography matrix between the two sets of matched points
-    (H, mask) = cv2.findHomography(ptsA, ptsB, method=cv2.RANSAC)
+    if len(matches) > 0:
+        (H, mask) = cv2.findHomography(ptsA, ptsB, method=cv2.RANSAC)
+    else:
+        raise ValueError("No matches")
+    try:
+        homo_norm = LA.norm(H)
+    except TypeError as e:
+        print("Exception occured, norm error:", e)
+        raise ValueError("Norm inapplicable")
 
-    homo_norm = LA.norm(H)
     print(f"Homography matrix norm: {homo_norm}")
     # Use the homography matrix to align the images
     
@@ -93,11 +110,13 @@ def align_images(image, template, method="SIFT", norm_name="L2", keep_percent=0.
     n_white_pix = np.sum(aligned_mask == 255)
     per_white_pix = 100 * n_white_pix / (heightB * widthB)
     print(f"% of covering: {per_white_pix}")
+    print(f"Keypoints n°: {nb_keypoints}")
+    print(f"Mean distance: {mean_dist}")
 
-    return aligned, aligned_mask, homo_norm, per_white_pix, matchedVis
+    return aligned, homo_norm, per_white_pix, nb_keypoints, mean_dist, matchedVis
 
 
-def batch_test(debug):
+def batch_test():
     start_time = time.time()
     default_method_name = "SIFT"
     default_norm_name = "L2"
@@ -109,7 +128,7 @@ def batch_test(debug):
     # folder_path = "./images/Capbreton_Santocha_VueSud"
     # folder_path = "./images/Manly"
     # folder_path = "./images/North_Narrabeen"
-    folder_path = "./images/test_rapide"
+    folder_path = "./images/test_rapide4"
     out_path = folder_path.replace("./images", "./results")
     try:
         os.makedirs(out_path)    
@@ -123,53 +142,61 @@ def batch_test(debug):
         print("Directory " , out_path_debug,  " created ")
     except FileExistsError:
         pass
-
+    
     # template_path = "./images/Lacanau_Kayok_VueNord/20201204_144234.jpg"
     # template_path = "./images/ucalib_examples/image000007.png"
     # template_path = "./images/SaintJeanDeLuz_Lafitenia_VueNord/20210308_111406.jpg"
     # template_path = "./images/Capbreton_Santocha_VueSud/IMG_20210409_101128.jpg"
-    # template_path_4_3 = "./images/Manly/tp9pzlhrd0pfdwyfpptj6czxmiaq8554.jpg"
+    # template_path = "./images/Manly/tp9pzlhrd0pfdwyfpptj6czxmiaq8554.jpg"
 
+    # template_path = None
     # template_path_4_3 = "./images/North_Narrabeen/4gf0l6xp79st2bukc739xhzqw5tchopv.jpg"
     # template_path_16_9 = "./images/North_Narrabeen/1m81bw22qltgx1bj1y8pfsy1a8gym72y.jpg"
-    template_path_4_3 = "./images/test_rapide/0g7wyl2zuqpkk9rde6lu0ssch3cf4ozn.jpg"
-    template_path_16_9 = "./images/test_rapide/0xq1xvq096qf5py41hykize2t9csritb.jpg"
-
-    template_name_4_3 = os.path.splitext(os.path.basename(template_path_4_3))[0]
-    template_name_16_9 = os.path.splitext(os.path.basename(template_path_16_9))[0]
-
-    copyfile(template_path_4_3, f"{out_path}/template_{template_name_4_3}.jpg")
-    copyfile(template_path_16_9, f"{out_path}/template_{template_name_16_9}.jpg")
     
-    template_4_3 = cv2.imread(template_path_4_3)
-    template_16_9 = cv2.imread(template_path_16_9)
+    
+    template_path = None
+    # template_path = "./images/test_rapide/north0.jpg"
+    template_path_4_3 = "./images/test_rapide4/north0_4_3.jpg"
+    template_path_16_9 = "./images/test_rapide4/north0_16_9.jpg"
 
-    template_min_4_3 = imutils.resize(template_4_3, width=950)
-    template_min_16_9 = imutils.resize(template_16_9, width=950)
+    if template_path is None:
+        template_name_4_3 = os.path.splitext(os.path.basename(template_path_4_3))[0]
+        template_name_16_9 = os.path.splitext(os.path.basename(template_path_16_9))[0]
 
-    print(f"Template name 4/3: {template_name_4_3}")
-    print(f"Template name 16/9: {template_name_16_9}")
+        copyfile(template_path_4_3, f"{out_path}/template_{template_name_4_3}.jpg")
+        copyfile(template_path_16_9, f"{out_path}/template_{template_name_16_9}.jpg")
+        
+        template_4_3 = cv2.imread(template_path_4_3)
+        template_16_9 = cv2.imread(template_path_16_9)
+
+        print(f"Template name 4/3: {template_name_4_3}")
+        print(f"Template name 16/9: {template_name_16_9}")
+    else:
+        template_name = os.path.splitext(os.path.basename(template_path))[0]
+        copyfile(template_path, f"{out_path}/template_{template_name}.jpg")
+        template = cv2.imread(template_path)
+        print(f"Template name: {template_name}")
 
     scores = {}
     images = sorted(glob.glob(folder_path +'/*.jpg'))
     nb_images = len(images)
     print(f"{nb_images} images found.")
+    old_template_path = template_path
     for image_path in images:
         image_name = os.path.splitext(os.path.basename(image_path))[0]
         image = cv2.imread(image_path)
         height, width, channels = image.shape
         ratio = width/height 
 
-        if abs(ratio - 4/3) <= abs(ratio - 16/9):
-            template_path = template_path_4_3
-            template_name = template_name_4_3
-            template = template_4_3
-            template_min = template_min_4_3
-        else:
-            template_path = template_path_16_9
-            template_name = template_name_16_9
-            template = template_16_9
-            template_min = template_min_16_9
+        if old_template_path is None:
+            if abs(ratio - 4/3) <= abs(ratio - 16/9):
+                template_path = template_path_4_3
+                template_name = template_name_4_3
+                template = template_4_3
+            else:
+                template_path = template_path_16_9
+                template_name = template_name_16_9
+                template = template_16_9
 
         print("-----------------")
         print(f"Aligning image {image_name}")
@@ -180,24 +207,47 @@ def batch_test(debug):
         else:
             scores[image_name] = {}
             tried = []
+            tried_realignment = False
             best_method_name = default_method_name
             best_norm_name = default_norm_name
-            best_aligned, best_homo_norm, best_covering = align_and_write(image, template, template_min, image_name, template_name, best_method_name, best_norm_name, out_path_debug, threshold_dist, debug)
+            
+            try:
+                best_aligned, best_homo_norm, best_covering, best_nb_keypoints, best_mean_dist = align_and_write(image, template, image_name, template_name, best_method_name, best_norm_name, out_path_debug, threshold_dist)
+            except ValueError as e:
+                print("Exception occured:", e)
+                scores[image_name].update({"aligned": False, "is_fake": True, "exception": str(e)})
+                with open(out_path + '/scores.json', 'w') as outfile:
+                    json.dump(scores, outfile, indent=4)
+                continue
+
             tried.append({
                         "homography_norm_value": best_homo_norm, 
                         "%covering": best_covering,
+                        "nb_keypoints": best_nb_keypoints,
+                        "mean_dist": best_mean_dist,
                         "method": best_method_name, 
                         "norm": best_norm_name
                     })
-            if best_homo_norm >= 200:
+            if best_homo_norm >= 150 or best_covering <= 90 or best_mean_dist <= 0.35:
                 print(f"Searching for best alignment method")
                 for (method_name, norm_name) in [("SURF", "L1"), ("SURF", "L2"), ("SIFT", "L1"), ("SIFT", "L2"), ("BRISK", "HAMMING")]:
                     if method_name == default_method_name and norm_name == default_norm_name:
                         continue
-                    aligned, homo_norm, covering = align_and_write(image, template, template_min, image_name, template_name, method_name, norm_name, out_path_debug, threshold_dist, debug)
+                    try:
+                        aligned, homo_norm, covering, nb_keypoints, mean_dist = align_and_write(image, template, image_name, template_name, method_name, norm_name, out_path_debug, threshold_dist)
+                    except ValueError as e:
+                        print("Exception occured:", e)
+                        scores[image_name].update({"aligned":False, "is_fake": True, "exception": str(e)})
+                        if len(tried) > 0:
+                            scores[image_name].update({"tried": tried})
+                        with open(out_path + '/scores.json', 'w') as outfile:
+                            json.dump(scores, outfile, indent=4)
+                        continue
                     tried.append({
                         "homography_norm_value": homo_norm, 
                         "%covering": covering,
+                        "nb_keypoints": nb_keypoints,
+                        "mean_dist": mean_dist,
                         "method": method_name, 
                         "norm": norm_name
                     })
@@ -207,88 +257,170 @@ def batch_test(debug):
                         best_method_name = method_name
                         best_norm_name = norm_name
                         best_covering = covering
-            if best_homo_norm < 600:
-                print(f"Image {image_name} aligned with {best_method_name}, {best_norm_name} with score {best_homo_norm}")
-                cv2.imwrite(f"{out_path}/{image_name}_{template_name}_aligned_with_{best_method_name}_{best_norm_name}_.jpg", best_aligned)
+                        best_nb_keypoints = nb_keypoints
+                        best_mean_dist = mean_dist
+            if best_homo_norm > 300 or best_covering < 85 or best_mean_dist > 0.35:
+                # Try to realigned the aligned image with the template
+                try:
+                    realigned, homo_norm_re, covering_re, nb_keypoints_re, mean_dist_re = align_and_write(aligned, template, image_name, template_name, best_method_name, best_norm_name, out_path_debug, threshold_dist)
+                except ValueError as e:
+                        print("Exception occured:", e)
+                        realigned = None
+                        homo_norm_re = 9999
+                        covering_re = 0
+                        nb_keypoints_re = 0
+                        mean_dist_re = 100
+                tried_realignment = True
+                print(f"Realigned with homo_norm_re {homo_norm_re}, covering_re {covering_re}, nb_keypoints_re {nb_keypoints_re}, mean_dist_re {mean_dist_re}")
+                cv2.imwrite(f"{out_path_debug}/{image_name}_{template_name}_realigned.jpg", realigned)
+                if homo_norm_re > 700 or mean_dist_re >= 0.6:
+                    print(f"Image {image_name} is not a photo of the template beach...")
+                    scores[image_name] = {
+                        "aligned": False,
+                        "is_fake": True, 
+                        "homography_norm_value": best_homo_norm, 
+                        "%covering": best_covering,
+                        "nb_keypoints": best_nb_keypoints,
+                        "mean_dist": best_mean_dist,
+                        "template": template_name,
+                        "realignment": {
+                            "homography_norm_value_re": homo_norm_re, 
+                            "%covering_re": covering_re,
+                            "nb_keypoints_re": nb_keypoints_re,
+                            "mean_dist_re": mean_dist_re
+                        }
+                    }
+                    if len(tried) > 0:
+                        scores[image_name].update({"tried": tried})
+                    with open(out_path + '/scores.json', 'w') as outfile:
+                        json.dump(scores, outfile, indent=4)
+                    continue
+
+            if best_homo_norm > 500 or best_covering <= 75 or best_mean_dist >= 0.5:
+                print(f"Failed to align image {image_name}, but nevertheless, it seems to be the right beach image")
+                cv2.imwrite(f"{out_path}/{image_name}_{template_name}_tried_to_be_aligned_with_{best_method_name}_{best_norm_name}_.jpg", best_aligned)
                 scores[image_name] = {
-                    "success":True, 
+                    "aligned": False,
+                    "is_fake": False,
                     "homography_norm_value": best_homo_norm, 
                     "%covering": best_covering,
+                    "nb_keypoints": best_nb_keypoints,
+                    "mean_dist": best_mean_dist,
                     "method": best_method_name, 
                     "norm": best_norm_name, 
-                    "template": template_name,
-                }
-                if len(tried) > 0:
-                    scores[image_name].update({"tried": tried})
-                aligned_ov = best_aligned.copy()
-                cv2.addWeighted(template, 0.5, best_aligned, 0.5, 0, aligned_ov)
-                # cv2.imwrite(f"{out_path}/{template_name}_test.jpg", template) # test
-                cv2.imwrite(f"{out_path}/{image_name}_{template_name}_{best_method_name}_{best_norm_name}_overlay.jpg", aligned_ov)
-            else:
-                print(f"Failed to align image {image_name}...")
-                scores[image_name] = {
-                    "success":False, 
-                    "homography_norm_value": best_homo_norm, 
-                    "%covering": best_covering,
                     "template":template_name
                 }
                 if len(tried) > 0:
                     scores[image_name].update({"tried": tried})
+                if tried_realignment:
+                    scores[image_name].update({
+                        "realignment": {
+                            "homography_norm_value_re": homo_norm_re, 
+                            "%covering_re": covering_re,
+                            "nb_keypoints_re": nb_keypoints_re,
+                            "mean_dist_re": mean_dist_re
+                        }})
+            else:
+                print(f"Image {image_name} aligned with {best_method_name}, {best_norm_name} with score {best_homo_norm}")
+                cv2.imwrite(f"{out_path}/{image_name}_{template_name}_aligned_with_{best_method_name}_{best_norm_name}_.jpg", best_aligned)
+                scores[image_name] = {
+                    "aligned": True,
+                    "is_fake": False,
+                    "homography_norm_value": best_homo_norm, 
+                    "%covering": best_covering,
+                    "nb_keypoints": best_nb_keypoints,
+                    "mean_dist": best_mean_dist,
+                    "method": best_method_name, 
+                    "norm": best_norm_name, 
+                    "template": template_name
+                }
+                if len(tried) > 0:
+                    scores[image_name].update({"tried": tried})
+                if tried_realignment:
+                    scores[image_name].update({
+                        "realignment": {
+                            "homography_norm_value_re": homo_norm_re, 
+                            "%covering_re": covering_re,
+                            "nb_keypoints_re": nb_keypoints_re,
+                            "mean_dist_re": mean_dist_re
+                        }})
+            aligned_ov = best_aligned.copy()
+            cv2.addWeighted(template, 0.5, best_aligned, 0.5, 0, aligned_ov)
+            cv2.imwrite(f"{out_path}/{image_name}_{template_name}_{best_method_name}_{best_norm_name}_overlay.jpg", aligned_ov)
             with open(out_path + '/scores.json', 'w') as outfile:
                 json.dump(scores, outfile, indent=4)
-    if nb_images != 0:
-        with open(out_path + '/scores.json') as json_file:
-            scores = json.load(json_file)
-            values_homo = []
-            values_cov = []
-            for item in scores.items():
-                print(item)
-                values_homo.append(item[1]["homography_norm_value"])
-                values_cov.append(item[1]["%covering"])
-            scores["stats"] = {}
-            scores["stats"]["homography_norm_value"] = {
-                    "min": np.min(values_homo),
-                    "max": np.max(values_homo),
-                    "mean": np.mean(values_homo),
-                    "median": np.median(values_homo)
-                }
-            scores["stats"]["%covering"] = {
-                    "min": np.min(values_cov),
-                    "max": np.max(values_cov),
-                    "mean": np.mean(values_cov),
-                    "median": np.median(values_cov)
-                }
-            scores["stats"].update({
-                "comp_time_minutes": (time.time() - start_time) / 60
-            })
-            with open(out_path + '/scores.json', 'w') as outfile:
-                json.dump(scores, outfile, indent=4)
+    if os.path.isfile(out_path + '/scores.json'):
+        try:
+            with open(out_path + '/scores.json') as json_file:
+                scores = json.load(json_file)
+                values_homo = []
+                values_cov = []
+                values_keypoints = []
+                values_mean_dist = []
+                for item in scores.items():
+                    try:
+                        print(item)
+                        values_homo.append(item[1]["homography_norm_value"])
+                        values_cov.append(item[1]["%covering"])
+                        values_keypoints.append(item[1]["nb_keypoints"])
+                        values_mean_dist.append(item[1]["mean_dist"])
+                    except KeyError as e:
+                        print("Exception occured, Key error:", e)
+                        continue
+                scores["stats"] = {}
+                if len(values_homo) > 0:
+                    scores["stats"]["homography_norm_value"] = {
+                            "min": str(np.min(values_homo)),
+                            "max": str(np.max(values_homo)),
+                            "mean": str(np.mean(values_homo)),
+                            "median": str(np.median(values_homo))
+                        }
+                if len(values_cov) > 0:
+                    scores["stats"]["%covering"] = {
+                            "min": str(np.min(values_cov)),
+                            "max": str(np.max(values_cov)),
+                            "mean": str(np.mean(values_cov)),
+                            "median": str(np.median(values_cov))
+                        }
+                if len(values_keypoints) > 0:
+                    scores["stats"]["nb_keypoints"] = {
+                            "min": str(np.min(values_keypoints)),
+                            "max": str(np.max(values_keypoints)),
+                            "mean": str(np.mean(values_keypoints)),
+                            "median": str(np.median(values_keypoints))
+                        }
+                if len(values_mean_dist) > 0:
+                    scores["stats"]["mean_dist"] = {
+                            "min": str(np.min(values_mean_dist)),
+                            "max": str(np.max(values_mean_dist)),
+                            "mean": str(np.mean(values_mean_dist)),
+                            "median": str(np.median(values_mean_dist))
+                        }
+                scores["stats"].update({
+                    "comp_time_minutes": (time.time() - start_time) / 60
+                })
+                with open(out_path + '/scores.json', 'w') as outfile:
+                    json.dump(scores, outfile, indent=4)
+        except FileNotFoundError as e:
+            print("Exception occured:", e)
 
 
-def align_and_write(image, template, template_min, image_name, template_name, method_name, norm_name, out_path_debug, threshold_dist, debug):
+def align_and_write(image, template, image_name, template_name, method_name, norm_name, out_path_debug, threshold_dist):
     debug_image_name = f"{image_name}_{template_name}_{method_name}_{norm_name}_descriptors_matching.jpg"
 
-    aligned, mask, homo_norm, covering, matchedVis = align_images(image, template, method=method_name, norm_name=norm_name, threshold_dist=threshold_dist, debug=debug)
-    # cv2.imwrite(f"{out_path_debug}/{image_name}_{template_name}_{method_name}_{norm_name}_aligned.jpg", aligned)
-    # cv2.imwrite(f"{out_path_debug}/{image_name}.jpg", image)
+    aligned, homo_norm, covering, nb_keypoints, mean_dist, matchedVis = align_images(image, template, method=method_name, norm_name=norm_name, threshold_dist=threshold_dist)
     cv2.imwrite(f"{out_path_debug}/{debug_image_name}", matchedVis)
-
-    # aligned_min = imutils.resize(aligned, width=950)
-
-    # stacked = np.hstack([aligned_min, template_min])
-
-    # cv2.imwrite(f"{out_path_debug}/{image_name}_{template_name}_{method_name}_{norm_name}_stacked.jpg", stacked)
 
     aligned_ov = aligned.copy()
     cv2.addWeighted(template, 0.5, aligned, 0.5, 0, aligned_ov)
     cv2.imwrite(f"{out_path_debug}/{image_name}_{template_name}_{method_name}_{norm_name}_overlay.jpg", aligned_ov)
-    # cv2.imwrite(f"{out_path_debug}/{image_name}_{template_name}_{method_name}_{norm_name}_mask.jpg", mask)
     
-    return aligned, homo_norm, covering
+    return aligned, homo_norm, covering, nb_keypoints, mean_dist
 
 
 
-def one_test(debug):
+def one_test():
+    out_path = "./results"
     # image = cv2.imread(args["image"])
     # template = cv2.imread(args["template"])
     
@@ -326,6 +458,7 @@ def one_test(debug):
     # template_path = "./images/Lacanau_Kayok_VueNord/20201204_144234.jpg"
 
     image_path = "./images/North_Narrabeen/biyg6w29eq4fd95rit4ht4kndzprfrh4.jpg"
+    template_path = None
     template_path_4_3 = "./images/North_Narrabeen/4gf0l6xp79st2bukc739xhzqw5tchopv.jpg"
     template_path_16_9 = "./images/North_Narrabeen/1m81bw22qltgx1bj1y8pfsy1a8gym72y.jpg"
     
@@ -337,10 +470,11 @@ def one_test(debug):
     height, width, channels = image.shape
     ratio = width/height 
 
-    if abs(ratio - 4/3) <= abs(ratio - 16/9):
-        template_path = template_path_4_3
-    else:
-        template_path = template_path_16_9
+    if template_path is None:
+        if abs(ratio - 4/3) <= abs(ratio - 16/9):
+            template_path = template_path_4_3
+        else:
+            template_path = template_path_16_9
 
     template_name = os.path.splitext(os.path.basename(template_path))[0]
     copyfile(template_path, f"{out_path}/template_{template_name}.jpg")
@@ -355,28 +489,20 @@ def one_test(debug):
     debug_image_name = f"{image_name}_{template_name}_{method_name}_{norm_name}_descriptors_matching.jpg"
 
     print("[INFO] aligning images...")
-    aligned, mask, homo_norm, covering, matchedVis = align_images(image, template, method=method_name, norm_name=norm_name, threshold_dist=threshold_dist, debug=debug)
+    aligned, homo_norm, covering, nb_keypoints, mean_dist, matchedVis = align_images(image, template, method=method_name, norm_name=norm_name, threshold_dist=threshold_dist)
     cv2.imwrite(f"results/{image_name}_aligned.jpg", aligned)
     cv2.imwrite(f"results/{debug_image_name}", matchedVis)
-    
-    # image = imutils.resize(image, width=950)
-    # aligned = imutils.resize(aligned, width=950)
-    # template = imutils.resize(template, width=950)
-
-    # stacked = np.hstack([aligned, template])
-    # cv2.imwrite(f"results/{image_name}_{template_name}_{method_name}_{norm_name}_stacked.jpg", stacked)
 
     overlay = template.copy()
     output = aligned.copy()
     cv2.addWeighted(overlay, 0.5, output, 0.5, 0, output)
     cv2.imwritemplate_namete(f"results/{image_name}_{template_name}_{method_name}_{norm_name}_overlay.jpg", output)
-    # cv2.imwrite(f"results/{image_name}_{template_name}_{method_name}_{norm_name}_mask.jpg", mask)
 
 
 
 def main():
-    # one_test(True)
-    batch_test(True)
+    # one_test()
+    batch_test()
 
 
 if __name__ == "__main__":
