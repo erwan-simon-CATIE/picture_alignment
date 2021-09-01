@@ -227,7 +227,7 @@ def batch_test():
 
             tried.append({
                         "homography_norm_value": best_homo_norm, 
-                        "": best_covering,
+                        "percent_covering": best_covering,
                         "nb_keypoints": best_nb_keypoints,
                         "mean_dist": best_mean_dist,
                         "method": best_method_name, 
