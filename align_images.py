@@ -111,7 +111,7 @@ def align_images(image, template, method="SIFT", norm_name="L2", keep_percent=0.
     aligned_mask = cv2.warpPerspective(white, H, (widthB, heightB))
     n_white_pix = np.sum(aligned_mask == 255)
     per_white_pix = 100 * n_white_pix / (heightB * widthB)
-    print(f"% of covering: {per_white_pix}")
+    print(f"percent of covering: {per_white_pix}")
     print(f"Keypoints n°: {nb_keypoints}")
     print(f"Mean distance: {mean_dist}")
 
@@ -227,7 +227,7 @@ def batch_test():
 
             tried.append({
                         "homography_norm_value": best_homo_norm, 
-                        "%covering": best_covering,
+                        "": best_covering,
                         "nb_keypoints": best_nb_keypoints,
                         "mean_dist": best_mean_dist,
                         "method": best_method_name, 
@@ -250,7 +250,7 @@ def batch_test():
                         continue
                     tried.append({
                         "homography_norm_value": homo_norm, 
-                        "%covering": covering,
+                        "percent_covering": covering,
                         "nb_keypoints": nb_keypoints,
                         "mean_dist": mean_dist,
                         "method": method_name, 
@@ -284,13 +284,13 @@ def batch_test():
                         "aligned": False,
                         "is_fake": True, 
                         "homography_norm_value": best_homo_norm, 
-                        "%covering": best_covering,
+                        "percent_covering": best_covering,
                         "nb_keypoints": best_nb_keypoints,
                         "mean_dist": best_mean_dist,
                         "template": template_name,
                         "realignment": {
                             "homography_norm_value_re": homo_norm_re, 
-                            "%covering_re": covering_re,
+                            "percent_covering_re": covering_re,
                             "nb_keypoints_re": nb_keypoints_re,
                             "mean_dist_re": mean_dist_re
                         }
@@ -308,7 +308,7 @@ def batch_test():
                     "aligned": False,
                     "is_fake": False,
                     "homography_norm_value": best_homo_norm, 
-                    "%covering": best_covering,
+                    "percent_covering": best_covering,
                     "nb_keypoints": best_nb_keypoints,
                     "mean_dist": best_mean_dist,
                     "method": best_method_name, 
@@ -321,7 +321,7 @@ def batch_test():
                     scores[image_name].update({
                         "realignment": {
                             "homography_norm_value_re": homo_norm_re, 
-                            "%covering_re": covering_re,
+                            "percent_covering_re": covering_re,
                             "nb_keypoints_re": nb_keypoints_re,
                             "mean_dist_re": mean_dist_re
                         }})
@@ -332,7 +332,7 @@ def batch_test():
                     "aligned": True,
                     "is_fake": False,
                     "homography_norm_value": best_homo_norm, 
-                    "%covering": best_covering,
+                    "percent_covering": best_covering,
                     "nb_keypoints": best_nb_keypoints,
                     "mean_dist": best_mean_dist,
                     "method": best_method_name, 
@@ -345,7 +345,7 @@ def batch_test():
                     scores[image_name].update({
                         "realignment": {
                             "homography_norm_value_re": homo_norm_re, 
-                            "%covering_re": covering_re,
+                            "percent_covering_re": covering_re,
                             "nb_keypoints_re": nb_keypoints_re,
                             "mean_dist_re": mean_dist_re
                         }})
@@ -366,7 +366,7 @@ def batch_test():
                     try:
                         print(item)
                         values_homo.append(item[1]["homography_norm_value"])
-                        values_cov.append(item[1]["%covering"])
+                        values_cov.append(item[1]["percent_covering"])
                         values_keypoints.append(item[1]["nb_keypoints"])
                         values_mean_dist.append(item[1]["mean_dist"])
                     except KeyError as e:
@@ -381,7 +381,7 @@ def batch_test():
                             "median": str(np.median(values_homo))
                         }
                 if len(values_cov) > 0:
-                    scores["stats"]["%covering"] = {
+                    scores["stats"]["percent_covering"] = {
                             "min": str(np.min(values_cov)),
                             "max": str(np.max(values_cov)),
                             "mean": str(np.mean(values_cov)),
