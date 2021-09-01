@@ -128,7 +128,8 @@ def batch_test():
     # folder_path = "./images/Capbreton_Santocha_VueSud"
     # folder_path = "./images/Manly"
     # folder_path = "./images/North_Narrabeen"
-    folder_path = "./images/test_rapide4"
+    # folder_path = "./images/test_rapide4"
+    folder_path = "./images/test_coastsnap"
     out_path = folder_path.replace("./images", "./results")
     try:
         os.makedirs(out_path)    
@@ -149,15 +150,14 @@ def batch_test():
     # template_path = "./images/Capbreton_Santocha_VueSud/IMG_20210409_101128.jpg"
     # template_path = "./images/Manly/tp9pzlhrd0pfdwyfpptj6czxmiaq8554.jpg"
 
-    # template_path = None
-    # template_path_4_3 = "./images/North_Narrabeen/4gf0l6xp79st2bukc739xhzqw5tchopv.jpg"
-    # template_path_16_9 = "./images/North_Narrabeen/1m81bw22qltgx1bj1y8pfsy1a8gym72y.jpg"
-    
-    
     template_path = None
+    template_path_4_3 = "./images/North_Narrabeen/4gf0l6xp79st2bukc739xhzqw5tchopv.jpg"
+    template_path_16_9 = "./images/North_Narrabeen/1m81bw22qltgx1bj1y8pfsy1a8gym72y.jpg"
+    
+    # template_path = None
     # template_path = "./images/test_rapide/north0.jpg"
-    template_path_4_3 = "./images/test_rapide4/north0_4_3.jpg"
-    template_path_16_9 = "./images/test_rapide4/north0_16_9.jpg"
+    # template_path_4_3 = "./images/test_rapide4/north0_4_3.jpg"
+    # template_path_16_9 = "./images/test_rapide4/north0_16_9.jpg"
 
     if template_path is None:
         template_name_4_3 = os.path.splitext(os.path.basename(template_path_4_3))[0]
@@ -182,7 +182,13 @@ def batch_test():
     nb_images = len(images)
     print(f"{nb_images} images found.")
     old_template_path = template_path
-    for image_path in images:
+
+    for count, image_path in enumerate(images):
+        if count < 256: #fixme
+            continue
+        print("-----------------")
+        print(f"Image n°{count}/{len(images)}")
+
         image_name = os.path.splitext(os.path.basename(image_path))[0]
         image = cv2.imread(image_path)
         height, width, channels = image.shape
@@ -198,7 +204,6 @@ def batch_test():
                 template_name = template_name_16_9
                 template = template_16_9
 
-        print("-----------------")
         print(f"Aligning image {image_name}")
     
         if image_path == template_path:
@@ -262,7 +267,7 @@ def batch_test():
             if best_homo_norm > 300 or best_covering < 85 or best_mean_dist > 0.35:
                 # Try to realigned the aligned image with the template
                 try:
-                    realigned, homo_norm_re, covering_re, nb_keypoints_re, mean_dist_re = align_and_write(aligned, template, image_name, template_name, best_method_name, best_norm_name, out_path_debug, threshold_dist)
+                    realigned, homo_norm_re, covering_re, nb_keypoints_re, mean_dist_re = align_and_write(aligned, image, image_name, template_name, best_method_name, best_norm_name, out_path_debug, threshold_dist)
                 except ValueError as e:
                         print("Exception occured:", e)
                         realigned = None
