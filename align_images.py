@@ -186,8 +186,6 @@ def batch_test():
     old_template_path = template_path
 
     for count, image_path in enumerate(images):
-        if count < 256: #fixme
-            continue
         print("-----------------")
         print(f"Image number {count}/{len(images)}")
 
