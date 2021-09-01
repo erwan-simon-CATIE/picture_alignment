@@ -112,7 +112,7 @@ def align_images(image, template, method="SIFT", norm_name="L2", keep_percent=0.
     n_white_pix = np.sum(aligned_mask == 255)
     per_white_pix = 100 * n_white_pix / (heightB * widthB)
     print(f"percent of covering: {per_white_pix}")
-    print(f"Keypoints n°: {nb_keypoints}")
+    print(f"Keypoints number: {nb_keypoints}")
     print(f"Mean distance: {mean_dist}")
 
     return aligned, homo_norm, per_white_pix, nb_keypoints, mean_dist, matchedVis
