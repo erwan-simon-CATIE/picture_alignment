@@ -221,7 +221,7 @@ def batch_test():
             except ValueError as e:
                 print("Exception occured:", e)
                 scores[image_name].update({"aligned": False, "is_fake": True, "exception": str(e)})
-                with open(out_path + '/scores.json', 'w') as outfile:
+                with open(out_path + '/scores.json', 'w', encoding="utf-8") as outfile:
                     json.dump(scores, outfile, indent=4)
                 continue
 
@@ -245,7 +245,7 @@ def batch_test():
                         scores[image_name].update({"aligned":False, "is_fake": True, "exception": str(e)})
                         if len(tried) > 0:
                             scores[image_name].update({"tried": tried})
-                        with open(out_path + '/scores.json', 'w') as outfile:
+                        with open(out_path + '/scores.json', 'w', encoding="utf-8") as outfile:
                             json.dump(scores, outfile, indent=4)
                         continue
                     tried.append({
@@ -297,7 +297,7 @@ def batch_test():
                     }
                     if len(tried) > 0:
                         scores[image_name].update({"tried": tried})
-                    with open(out_path + '/scores.json', 'w') as outfile:
+                    with open(out_path + '/scores.json', 'w', encoding="utf-8") as outfile:
                         json.dump(scores, outfile, indent=4)
                     continue
 
@@ -352,11 +352,11 @@ def batch_test():
             aligned_ov = best_aligned.copy()
             cv2.addWeighted(template, 0.5, best_aligned, 0.5, 0, aligned_ov)
             cv2.imwrite(f"{out_path}/{image_name}_{template_name}_{best_method_name}_{best_norm_name}_overlay.jpg", aligned_ov)
-            with open(out_path + '/scores.json', 'w') as outfile:
+            with open(out_path + '/scores.json', 'w', encoding="utf-8") as outfile:
                 json.dump(scores, outfile, indent=4)
     if os.path.isfile(out_path + '/scores.json'):
         try:
-            with open(out_path + '/scores.json') as json_file:
+            with open(out_path + '/scores.json', encoding="utf-8") as json_file:
                 scores = json.load(json_file)
                 values_homo = []
                 values_cov = []
@@ -404,7 +404,7 @@ def batch_test():
                 scores["stats"].update({
                     "comp_time_minutes": (time.time() - start_time) / 60
                 })
-                with open(out_path + '/scores.json', 'w') as outfile:
+                with open(out_path + '/scores.json', 'w', encoding="utf-8") as outfile:
                     json.dump(scores, outfile, indent=4)
         except FileNotFoundError as e:
             print("Exception occured:", e)
