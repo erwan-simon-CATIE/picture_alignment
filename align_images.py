@@ -189,7 +189,7 @@ def batch_test():
         if count < 256: #fixme
             continue
         print("-----------------")
-        print(f"Image n°{count}/{len(images)}")
+        print(f"Image number {count}/{len(images)}")
 
         image_name = os.path.splitext(os.path.basename(image_path))[0]
         image = cv2.imread(image_path)
