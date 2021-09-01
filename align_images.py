@@ -96,11 +96,11 @@ def align_images(image, template, method="SIFT", norm_name="L2", keep_percent=0.
         (H, mask) = cv2.findHomography(ptsA, ptsB, method=cv2.RANSAC)
     else:
         raise ValueError("No matches")
-    try:
-        homo_norm = LA.norm(H)
-    except TypeError as e:
-        print("Exception occured, norm error:", e)
-        raise ValueError("Norm inapplicable")
+    # try:
+    homo_norm = LA.norm(H)
+    # except TypeError as e:
+    #     print("Exception occured, norm error:", e)
+    #     raise ValueError("Norm inapplicable")
 
     print(f"Homography matrix norm: {homo_norm}")
     # Use the homography matrix to align the images
@@ -216,14 +216,14 @@ def batch_test():
             best_method_name = default_method_name
             best_norm_name = default_norm_name
             
-            try:
-                best_aligned, best_homo_norm, best_covering, best_nb_keypoints, best_mean_dist = align_and_write(image, template, image_name, template_name, best_method_name, best_norm_name, out_path_debug, threshold_dist)
-            except ValueError as e:
-                print("Exception occured:", e)
-                scores[image_name].update({"aligned": False, "is_fake": True, "exception": str(e)})
-                with open(out_path + '/scores.json', 'w', encoding="utf-8") as outfile:
-                    json.dump(scores, outfile, indent=4)
-                continue
+            # try:
+            best_aligned, best_homo_norm, best_covering, best_nb_keypoints, best_mean_dist = align_and_write(image, template, image_name, template_name, best_method_name, best_norm_name, out_path_debug, threshold_dist)
+            # except ValueError as e:
+            #     print("Exception occured:", e)
+            #     scores[image_name].update({"aligned": False, "is_fake": True, "exception": str(e)})
+            #     with open(out_path + '/scores.json', 'w', encoding="utf-8") as outfile:
+            #         json.dump(scores, outfile, indent=4)
+            #     continue
 
             tried.append({
                         "homography_norm_value": best_homo_norm, 
@@ -238,16 +238,16 @@ def batch_test():
                 for (method_name, norm_name) in [("SURF", "L1"), ("SURF", "L2"), ("SIFT", "L1"), ("SIFT", "L2"), ("BRISK", "HAMMING")]:
                     if method_name == default_method_name and norm_name == default_norm_name:
                         continue
-                    try:
-                        aligned, homo_norm, covering, nb_keypoints, mean_dist = align_and_write(image, template, image_name, template_name, method_name, norm_name, out_path_debug, threshold_dist)
-                    except ValueError as e:
-                        print("Exception occured:", e)
-                        scores[image_name].update({"aligned":False, "is_fake": True, "exception": str(e)})
-                        if len(tried) > 0:
-                            scores[image_name].update({"tried": tried})
-                        with open(out_path + '/scores.json', 'w', encoding="utf-8") as outfile:
-                            json.dump(scores, outfile, indent=4)
-                        continue
+                    # try:
+                    aligned, homo_norm, covering, nb_keypoints, mean_dist = align_and_write(image, template, image_name, template_name, method_name, norm_name, out_path_debug, threshold_dist)
+                    # except ValueError as e:
+                    #     print("Exception occured:", e)
+                    #     scores[image_name].update({"aligned":False, "is_fake": True, "exception": str(e)})
+                    #     if len(tried) > 0:
+                    #         scores[image_name].update({"tried": tried})
+                    #     with open(out_path + '/scores.json', 'w', encoding="utf-8") as outfile:
+                    #         json.dump(scores, outfile, indent=4)
+                    #     continue
                     tried.append({
                         "homography_norm_value": homo_norm, 
                         "percent_covering": covering,
@@ -266,15 +266,15 @@ def batch_test():
                         best_mean_dist = mean_dist
             if best_homo_norm > 300 or best_covering < 85 or best_mean_dist > 0.35:
                 # Try to realigned the aligned image with the template
-                try:
-                    realigned, homo_norm_re, covering_re, nb_keypoints_re, mean_dist_re = align_and_write(aligned, image, image_name, template_name, best_method_name, best_norm_name, out_path_debug, threshold_dist)
-                except ValueError as e:
-                        print("Exception occured:", e)
-                        realigned = None
-                        homo_norm_re = 9999
-                        covering_re = 0
-                        nb_keypoints_re = 0
-                        mean_dist_re = 100
+                # try:
+                realigned, homo_norm_re, covering_re, nb_keypoints_re, mean_dist_re = align_and_write(aligned, image, image_name, template_name, best_method_name, best_norm_name, out_path_debug, threshold_dist)
+                # except ValueError as e:
+                #         print("Exception occured:", e)
+                #         realigned = None
+                #         homo_norm_re = 9999
+                #         covering_re = 0
+                #         nb_keypoints_re = 0
+                #         mean_dist_re = 100
                 tried_realignment = True
                 print(f"Realigned with homo_norm_re {homo_norm_re}, covering_re {covering_re}, nb_keypoints_re {nb_keypoints_re}, mean_dist_re {mean_dist_re}")
                 cv2.imwrite(f"{out_path_debug}/{image_name}_{template_name}_realigned.jpg", realigned)
@@ -363,15 +363,15 @@ def batch_test():
                 values_keypoints = []
                 values_mean_dist = []
                 for item in scores.items():
-                    try:
-                        print(item)
-                        values_homo.append(item[1]["homography_norm_value"])
-                        values_cov.append(item[1]["percent_covering"])
-                        values_keypoints.append(item[1]["nb_keypoints"])
-                        values_mean_dist.append(item[1]["mean_dist"])
-                    except KeyError as e:
-                        print("Exception occured, Key error:", e)
-                        continue
+                    # try:
+                    print(item)
+                    values_homo.append(item[1]["homography_norm_value"])
+                    values_cov.append(item[1]["percent_covering"])
+                    values_keypoints.append(item[1]["nb_keypoints"])
+                    values_mean_dist.append(item[1]["mean_dist"])
+                    # except KeyError as e:
+                    #     print("Exception occured, Key error:", e)
+                    #     continue
                 scores["stats"] = {}
                 if len(values_homo) > 0:
                     scores["stats"]["homography_norm_value"] = {
