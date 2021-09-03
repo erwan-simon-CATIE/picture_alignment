@@ -159,9 +159,9 @@ def batch_test():
     # folder_path = "./images/SaintJeanDeLuz_Lafitenia_VueNord"
     # folder_path = "./images/Capbreton_Santocha_VueSud"
     # folder_path = "./images/Manly"
-    # folder_path = "./images/North_Narrabeen"
+    folder_path = "./images/North_Narrabeen"
     # folder_path = "./images/test_rapide4"
-    folder_path = "./images/test_coastsnap"
+    # folder_path = "./images/test_coastsnap"
     out_path = folder_path.replace("./images", "./results")
     try:
         os.makedirs(out_path)    
@@ -276,7 +276,7 @@ def batch_test():
                         "new_cent_int": best_new_cent_int,
                         "new_cent_loc_ratio": best_new_cent_loc_ratio
                     })
-            if best_homo_norm >= 150 or best_covering <= 90 or best_mean_dist >= 0.30:
+            if best_homo_norm >= 150 or best_covering <= 90 or best_mean_dist >= 0.30 or best_new_cent_loc_ratio[0] >= 0.08 or best_new_cent_loc_ratio[1] >= 0.08:
                 print(f"Searching for best alignment method")
                 for (method_name, norm_name) in [("SURF", "L1"), ("SURF", "L2"), ("SIFT", "L1"), ("SIFT", "L2"), ("BRISK", "HAMMING")]:
                     if method_name == default_method_name and norm_name == default_norm_name:
@@ -324,39 +324,57 @@ def batch_test():
                         covering_re = 0
                         nb_keypoints_re = 0
                         mean_dist_re = 100
+                        new_cent_int_re = 0
+                        new_cent_loc_ratio_re = (0.5,0.5)
+
                 tried_realignment = True
                 print(f"Realigned with homo_norm_re {homo_norm_re}, covering_re {covering_re}, nb_keypoints_re {nb_keypoints_re}, mean_dist_re {mean_dist_re}")
                 cv2.imwrite(f"{out_path_debug}/{image_name}_{template_name}_realigned.jpg", realigned)
-                if homo_norm_re > 700 or mean_dist_re >= 0.3:
-                    print(f"Image {image_name} is not a photo of the template beach...")
-                    scores[image_name] = {
-                        "template": template_name,
-                        "aligned": False,
-                        "is_fake": True,
-                        "method": best_method_name, 
-                        "norm": best_norm_name,
-                        "homography_norm_value": best_homo_norm, 
-                        "%_covering": best_covering,
-                        "nb_keypoints": best_nb_keypoints,
-                        "mean_dist": best_mean_dist,
-                        "new_cent_int": best_new_cent_int,
-                        "new_cent_loc_ratio": best_new_cent_loc_ratio,
-                        "realignment": {
-                            "homography_norm_value_re": homo_norm_re, 
-                            "percent_covering_re": covering_re,
-                            "nb_keypoints_re": nb_keypoints_re,
-                            "mean_dist_re": mean_dist_re,
-                            "new_cent_int_re": new_cent_int_re,
-                            "new_cent_loc_ratio_re": new_cent_loc_ratio_re
-                        }
-                    }
-                    if len(tried) > 0:
-                        scores[image_name].update({"tried": tried})
-                    with open(out_path + '/scores.json', 'w', encoding="utf-8") as outfile:
-                        json.dump(scores, outfile, indent=4)
-                    continue
+                # if homo_norm_re > 700 or mean_dist_re >= 0.3:
+                #     print(f"Image {image_name} is not a photo of the template beach...")
+                #     scores[image_name] = {
+                #         "template": template_name,
+                #         "aligned": False,
+                #         "is_fake": True,
+                #         "method": best_method_name, 
+                #         "norm": best_norm_name,
+                #         "homography_norm_value": best_homo_norm, 
+                #         "%_covering": best_covering,
+                #         "nb_keypoints": best_nb_keypoints,
+                #         "mean_dist": best_mean_dist,
+                #         "new_cent_int": best_new_cent_int,
+                #         "new_cent_loc_ratio": best_new_cent_loc_ratio,
+                #         "realignment": {
+                #             "homography_norm_value_re": homo_norm_re, 
+                #             "percent_covering_re": covering_re,
+                #             "nb_keypoints_re": nb_keypoints_re,
+                #             "mean_dist_re": mean_dist_re,
+                #             "new_cent_int_re": new_cent_int_re,
+                #             "new_cent_loc_ratio_re": new_cent_loc_ratio_re
+                #         }
+                #     }
+                #     if len(tried) > 0:
+                #         scores[image_name].update({"tried": tried})
+                #     with open(out_path + '/scores.json', 'w', encoding="utf-8") as outfile:
+                #         json.dump(scores, outfile, indent=4)
+                #     continue
 
-            if best_homo_norm > 500 or best_covering <= 75 or best_mean_dist >= 0.5:
+            if (best_homo_norm > 1500 or best_mean_dist >= 0.5 or new_cent_int <= 100 or (new_cent_loc_ratio[0] > 0.11 and new_cent_loc_ratio[1] > 0.11)):
+                print(f"Image {image_name} is not a photo of the template beach...")
+                scores[image_name] = {
+                    "template": template_name,
+                    "aligned": False,
+                    "is_fake": True,
+                    "method": best_method_name, 
+                    "norm": best_norm_name,
+                    "homography_norm_value": best_homo_norm, 
+                    "%_covering": best_covering,
+                    "nb_keypoints": best_nb_keypoints,
+                    "mean_dist": best_mean_dist,
+                    "new_cent_int": best_new_cent_int,
+                    "new_cent_loc_ratio": best_new_cent_loc_ratio,
+                }
+            elif (best_homo_norm > 500 or best_covering <= 80 or best_mean_dist >= 0.4 or new_cent_loc_ratio[0] > 0.05 or new_cent_loc_ratio[1] > 0.05):
                 print(f"Failed to align image {image_name}, but nevertheless, it seems to be the right beach image")
                 cv2.imwrite(f"{out_path}/{image_name}_{template_name}_tried_to_be_aligned_with_{best_method_name}_{best_norm_name}_.jpg", best_aligned)
                 scores[image_name] = {
@@ -372,18 +390,6 @@ def batch_test():
                     "new_cent_int": best_new_cent_int,
                     "new_cent_loc_ratio": best_new_cent_loc_ratio
                 }
-                if tried_realignment:
-                    scores[image_name].update({
-                        "realignment": {
-                            "homography_norm_value_re": homo_norm_re, 
-                            "percent_covering_re": covering_re,
-                            "nb_keypoints_re": nb_keypoints_re,
-                            "mean_dist_re": mean_dist_re,
-                            "new_cent_int_re": new_cent_int_re,
-                            "new_cent_loc_ratio_re": new_cent_loc_ratio_re
-                        }})
-                    if len(tried) > 0:
-                        scores[image_name].update({"tried": tried})
             else:
                 print(f"Image {image_name} aligned with {best_method_name}, {best_norm_name} with score {best_homo_norm}")
                 cv2.imwrite(f"{out_path}/{image_name}_{template_name}_aligned_with_{best_method_name}_{best_norm_name}_.jpg", best_aligned)
@@ -400,18 +406,18 @@ def batch_test():
                     "new_cent_int": best_new_cent_int,
                     "new_cent_loc_ratio": best_new_cent_loc_ratio
                 }
-                if len(tried) > 0:
-                    scores[image_name].update({"tried": tried})
-                if tried_realignment:
-                    scores[image_name].update({
-                        "realignment": {
-                            "homography_norm_value_re": homo_norm_re, 
-                            "percent_covering_re": covering_re,
-                            "nb_keypoints_re": nb_keypoints_re,
-                            "mean_dist_re": mean_dist_re,
-                            "new_cent_int_re": new_cent_int_re,
-                            "new_cent_loc_ratio_re": new_cent_loc_ratio_re
-                        }})
+            if tried_realignment:
+                scores[image_name].update({
+                    "realignment": {
+                        "homography_norm_value_re": homo_norm_re, 
+                        "percent_covering_re": covering_re,
+                        "nb_keypoints_re": nb_keypoints_re,
+                        "mean_dist_re": mean_dist_re,
+                        "new_cent_int_re": new_cent_int_re,
+                        "new_cent_loc_ratio_re": new_cent_loc_ratio_re
+                    }})
+            if len(tried) > 0:
+                        scores[image_name].update({"tried": tried})
             aligned_ov = best_aligned.copy()
             cv2.addWeighted(template, 0.5, best_aligned, 0.5, 0, aligned_ov)
             cv2.imwrite(f"{out_path}/{image_name}_{template_name}_{best_method_name}_{best_norm_name}_overlay.jpg", aligned_ov)
