@@ -159,9 +159,9 @@ def batch_test():
     # folder_path = "./images/SaintJeanDeLuz_Lafitenia_VueNord"
     # folder_path = "./images/Capbreton_Santocha_VueSud"
     # folder_path = "./images/Manly"
-    folder_path = "./images/North_Narrabeen"
+    # folder_path = "./images/North_Narrabeen"
     # folder_path = "./images/test_rapide4"
-    # folder_path = "./images/test_coastsnap"
+    folder_path = "./images/test_coastsnap"
     out_path = folder_path.replace("./images", "./results")
     try:
         os.makedirs(out_path)    
