@@ -153,12 +153,12 @@ def batch_test():
     default_method_name = "SIFT"
     default_norm_name = "L2"
     threshold_dist = 1.5
-    # folder_path = "./images/Lacanau_Kayok_VueNord"
+    folder_path = "./images/Lacanau_Kayok_VueNord"
     # folder_path = "./images/ucalib_examples"
     # folder_path = "./images/Lacanau_Kayok_VueNord (copie)"
     # folder_path = "./images/SaintJeanDeLuz_Lafitenia_VueNord"
     # folder_path = "./images/Capbreton_Santocha_VueSud"
-    folder_path = "./images/Manly"
+    # folder_path = "./images/Manly"
     # folder_path = "./images/North_Narrabeen"
     # folder_path = "./images/test_coastsnap"
     # folder_path = "./images/test_rapide2"
@@ -176,11 +176,11 @@ def batch_test():
     except FileExistsError:
         pass
     
-    # template_path = "./images/Lacanau_Kayok_VueNord/20201204_144234.jpg"
+    template_path = "./images/Lacanau_Kayok_VueNord/20201204_144234.jpg"
     # template_path = "./images/ucalib_examples/image000007.png"
     # template_path = "./images/SaintJeanDeLuz_Lafitenia_VueNord/20210308_111406.jpg"
     # template_path = "./images/Capbreton_Santocha_VueSud/IMG_20210409_101128.jpg"
-    template_path = "./images/Manly/tp9pzlhrd0pfdwyfpptj6czxmiaq8554.jpg"
+    # template_path = "./images/Manly/tp9pzlhrd0pfdwyfpptj6czxmiaq8554.jpg"
 
     template_path_4_3 = None
     template_path_16_9 = None
