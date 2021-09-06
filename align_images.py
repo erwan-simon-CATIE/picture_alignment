@@ -158,9 +158,9 @@ def batch_test():
     # folder_path = "./images/Lacanau_Kayok_VueNord (copie)"
     # folder_path = "./images/SaintJeanDeLuz_Lafitenia_VueNord"
     # folder_path = "./images/Capbreton_Santocha_VueSud"
-    # folder_path = "./images/Manly"
+    folder_path = "./images/Manly"
     # folder_path = "./images/North_Narrabeen"
-    folder_path = "./images/test_coastsnap"
+    # folder_path = "./images/test_coastsnap"
     # folder_path = "./images/test_rapide2"
     out_path = folder_path.replace("./images", "./results")
     try:
@@ -180,11 +180,14 @@ def batch_test():
     # template_path = "./images/ucalib_examples/image000007.png"
     # template_path = "./images/SaintJeanDeLuz_Lafitenia_VueNord/20210308_111406.jpg"
     # template_path = "./images/Capbreton_Santocha_VueSud/IMG_20210409_101128.jpg"
-    # template_path = "./images/Manly/tp9pzlhrd0pfdwyfpptj6czxmiaq8554.jpg"
+    template_path = "./images/Manly/tp9pzlhrd0pfdwyfpptj6czxmiaq8554.jpg"
 
-    template_path = None
-    template_path_4_3 = "./images/North_Narrabeen/4gf0l6xp79st2bukc739xhzqw5tchopv.jpg"
-    template_path_16_9 = "./images/North_Narrabeen/1m81bw22qltgx1bj1y8pfsy1a8gym72y.jpg"
+    template_path_4_3 = None
+    template_path_16_9 = None
+
+    # template_path = None
+    # template_path_4_3 = "./images/North_Narrabeen/4gf0l6xp79st2bukc739xhzqw5tchopv.jpg"
+    # template_path_16_9 = "./images/North_Narrabeen/1m81bw22qltgx1bj1y8pfsy1a8gym72y.jpg"
     
     # template_path = None
     # template_path = "./images/test_rapide/north0.jpg"
