@@ -159,9 +159,9 @@ def batch_test():
     # folder_path = "./images/SaintJeanDeLuz_Lafitenia_VueNord"
     # folder_path = "./images/Capbreton_Santocha_VueSud"
     # folder_path = "./images/Manly"
-    # folder_path = "./images/North_Narrabeen"
-    # folder_path = "./images/test_rapide4"
-    folder_path = "./images/test_coastsnap"
+    folder_path = "./images/North_Narrabeen"
+    # folder_path = "./images/test_coastsnap"
+    # folder_path = "./images/test_rapide2"
     out_path = folder_path.replace("./images", "./results")
     try:
         os.makedirs(out_path)    
@@ -359,7 +359,7 @@ def batch_test():
                 #         json.dump(scores, outfile, indent=4)
                 #     continue
 
-            if (best_homo_norm > 1500 or best_mean_dist >= 0.5 or new_cent_int <= 100 or (new_cent_loc_ratio[0] > 0.11 and new_cent_loc_ratio[1] > 0.11)):
+            if (best_homo_norm > 1500 or best_mean_dist >= 0.5 or best_new_cent_int <= 100 or (best_new_cent_loc_ratio[0] > 0.11 and best_new_cent_loc_ratio[1] > 0.11)):
                 print(f"Image {image_name} is not a photo of the template beach...")
                 scores[image_name] = {
                     "template": template_name,
@@ -374,7 +374,7 @@ def batch_test():
                     "new_cent_int": best_new_cent_int,
                     "new_cent_loc_ratio": best_new_cent_loc_ratio,
                 }
-            elif (best_homo_norm > 500 or best_covering <= 80 or best_mean_dist >= 0.4 or new_cent_loc_ratio[0] > 0.05 or new_cent_loc_ratio[1] > 0.05):
+            elif (best_homo_norm > 500 or best_covering <= 80 or best_mean_dist >= 0.4 or best_new_cent_loc_ratio[0] > 0.05 or best_new_cent_loc_ratio[1] > 0.05):
                 print(f"Failed to align image {image_name}, but nevertheless, it seems to be the right beach image")
                 cv2.imwrite(f"{out_path}/{image_name}_{template_name}_tried_to_be_aligned_with_{best_method_name}_{best_norm_name}_.jpg", best_aligned)
                 scores[image_name] = {
@@ -512,91 +512,5 @@ def align_and_write(image, template, image_name, template_name, method_name, nor
     return aligned, homo_norm, covering, nb_keypoints, mean_dist, new_cent_int, new_cent_loc_ratio
 
 
-
-def one_test():
-    out_path = "./results"
-    # image = cv2.imread(args["image"])
-    # template = cv2.imread(args["template"])
-    
-    # image_path = "./images/Lacanau_Kayok_Vue_Nord_Reduit/20201215_140836.jpg"
-    # template_path = "./images/Lacanau_Kayok_Vue_Nord_Reduit/20201204_144234.jpg"
-
-    # image_path = "./images/palombaggia1.jpg"
-    # template_path = "./images/palombaggia2.jpg"
-    # image_path = "./exemples/compliqué1/5/tasmani_coastsnap1.jpg"
-    # template_path = "./exemples/compliqué1/5/tasmani_coastsnap2.jpg"
-
-    # image_path = "./exemples/compliqué1/4/tasmani_coastsnap1.jpg"
-    # template_path = "./exemples/compliqué1/4/tasmani_coastsnap2.jpg"
-
-    # image_path = "./exemples/trop_dur/9/bresil_coastsnap1.jpg"
-    # template_path = "./exemples/trop_dur/9/bresil_coastsnap2.jpg"
-
-    # No match example
-    # image_path = "./images/SaintJeanDeLuz_Lafitenia_VueNord/20210308_111406.jpg"
-    # template_path = "./images/Lacanau_Kayok_Vue_Nord_Reduit/20201204_144234.jpg"
-
-    # image_path = "./images/Capbreton_Santocha_VueSud/IMG_20210409_101128.jpg"
-    # template_path = "./images/Capbreton_Santocha_VueSud/IMG_20210409_101206.jpg"
-
-    # FIXME: Plante
-    # image_path = "./images/other/blanc.png"
-    # template_path = "./images/Lacanau_Kayok_Vue_Nord_Reduit/20201204_144234.jpg"
-    
-    # Sift marche pas mais surf oui 
-    # image_path = "./images/Lacanau_Kayok_VueNord/20201118_124741.jpg"
-    # template_path = "./images/Lacanau_Kayok_VueNord/20201204_144234.jpg"
-
-    # Trop dur
-    # image_path = "./images/Lacanau_Kayok_VueNord/20201214_172225.jpg"
-    # template_path = "./images/Lacanau_Kayok_VueNord/20201204_144234.jpg"
-
-    image_path = "./images/North_Narrabeen/biyg6w29eq4fd95rit4ht4kndzprfrh4.jpg"
-    template_path = None
-    template_path_4_3 = "./images/North_Narrabeen/4gf0l6xp79st2bukc739xhzqw5tchopv.jpg"
-    template_path_16_9 = "./images/North_Narrabeen/1m81bw22qltgx1bj1y8pfsy1a8gym72y.jpg"
-    
-    # BRISK meilleur perf alors que... =/
-    # image_path = "./images/North_Narrabeen/cmf39ffgr203d19qysvwjaq3r56hss68.jpg"
-
-    image_name = os.path.splitext(os.path.basename(image_path))[0]
-    image = cv2.imread(image_path)
-    height, width, channels = image.shape
-    ratio = width/height 
-
-    if template_path is None:
-        if abs(ratio - 4/3) <= abs(ratio - 16/9):
-            template_path = template_path_4_3
-        else:
-            template_path = template_path_16_9
-
-    template_name = os.path.splitext(os.path.basename(template_path))[0]
-    copyfile(template_path, f"{out_path}/template_{template_name}.jpg")
-    copyfile(image_path, f"{out_path}/{image_name}.jpg")
-
-    print(f"input: {image_name}, output: {template_name}")
-    template = cv2.imread(template_path)
-    
-    method_name = "SIFT"
-    norm_name = "L2"
-    threshold_dist = 1.5
-    debug_image_name = f"{image_name}_{template_name}_{method_name}_{norm_name}_descriptors_matching.jpg"
-
-    print("[INFO] aligning images...")
-    aligned, homo_norm, covering, nb_keypoints, mean_dist, new_cent_int, new_cent_loc_ratio, matchedVis = align_images(image, template, method=method_name, norm_name=norm_name, threshold_dist=threshold_dist)
-    cv2.imwrite(f"results/{image_name}_aligned.jpg", aligned)
-    cv2.imwrite(f"results/{debug_image_name}", matchedVis)
-
-    overlay = template.copy()
-    output = aligned.copy()
-    cv2.addWeighted(overlay, 0.5, output, 0.5, 0, output)
-    cv2.imwritemplate_namete(f"results/{image_name}_{template_name}_{method_name}_{norm_name}_overlay.jpg", output)
-
-
-def main():
-    # one_test()
-    batch_test()
-
-
 if __name__ == "__main__":
-    main()
+    batch_test()
