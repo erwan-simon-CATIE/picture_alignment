@@ -153,7 +153,7 @@ def batch_test():
     default_method_name = "SIFT"
     default_norm_name = "L2"
     threshold_dist = 1.5
-    folder_path = "./images/Lacanau_Kayok_VueNord"
+    # folder_path = "./images/Lacanau_Kayok_VueNord"
     # folder_path = "./images/ucalib_examples"
     # folder_path = "./images/Lacanau_Kayok_VueNord (copie)"
     # folder_path = "./images/SaintJeanDeLuz_Lafitenia_VueNord"
@@ -162,6 +162,8 @@ def batch_test():
     # folder_path = "./images/North_Narrabeen"
     # folder_path = "./images/test_coastsnap"
     # folder_path = "./images/test_rapide2"
+    folder_path = "./images/test_rapide4"
+    # folder_path = "./images/other"
     out_path = folder_path.replace("./images", "./results")
     try:
         os.makedirs(out_path)    
@@ -176,18 +178,18 @@ def batch_test():
     except FileExistsError:
         pass
     
-    template_path = "./images/Lacanau_Kayok_VueNord/20201204_144234.jpg"
+    # template_path = "./images/Lacanau_Kayok_VueNord/20201204_144234.jpg"
     # template_path = "./images/ucalib_examples/image000007.png"
     # template_path = "./images/SaintJeanDeLuz_Lafitenia_VueNord/20210308_111406.jpg"
     # template_path = "./images/Capbreton_Santocha_VueSud/IMG_20210409_101128.jpg"
     # template_path = "./images/Manly/tp9pzlhrd0pfdwyfpptj6czxmiaq8554.jpg"
 
-    template_path_4_3 = None
-    template_path_16_9 = None
+    # template_path_4_3 = None
+    # template_path_16_9 = None
 
-    # template_path = None
-    # template_path_4_3 = "./images/North_Narrabeen/4gf0l6xp79st2bukc739xhzqw5tchopv.jpg"
-    # template_path_16_9 = "./images/North_Narrabeen/1m81bw22qltgx1bj1y8pfsy1a8gym72y.jpg"
+    template_path = None
+    template_path_4_3 = "./images/North_Narrabeen/4gf0l6xp79st2bukc739xhzqw5tchopv.jpg"
+    template_path_16_9 = "./images/North_Narrabeen/1m81bw22qltgx1bj1y8pfsy1a8gym72y.jpg"
     
     # template_path = None
     # template_path = "./images/test_rapide/north0.jpg"
@@ -436,9 +438,13 @@ def batch_test():
                 values_mean_dist = []
                 values_new_cent_int = []
                 values_new_cent_loc_ratio = []
+                
                 for item in scores.items():
                     try:
                         print(item)
+                        if item[0] == "stats":
+                            continue
+                        
                         values_homo.append(item[1]["homography_norm_value"])
                         values_cov.append(item[1]["%_covering"])
                         values_keypoints.append(item[1]["nb_keypoints"])
@@ -479,14 +485,14 @@ def batch_test():
                             "median": str(np.median(values_mean_dist))
                         }
                 if len(values_new_cent_int) > 0:
-                    scores["stats"]["mean_dist"] = {
+                    scores["stats"]["new_cent_int"] = {
                             "min": str(np.min(values_new_cent_int)),
                             "max": str(np.max(values_new_cent_int)),
                             "mean": str(np.mean(values_new_cent_int)),
                             "median": str(np.median(values_new_cent_int))
                         }
                 if len(values_new_cent_loc_ratio) > 0:
-                    scores["stats"]["mean_dist"] = {
+                    scores["stats"]["new_cent_loc_ratio"] = {
                             "min": str(np.min(values_new_cent_loc_ratio)),
                             "max": str(np.max(values_new_cent_loc_ratio)),
                             "mean": str(np.mean(values_new_cent_loc_ratio)),
