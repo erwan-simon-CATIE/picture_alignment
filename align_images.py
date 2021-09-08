@@ -318,7 +318,7 @@ def batch_test():
                         best_new_cent_int = new_cent_int
                         best_new_cent_loc_ratio = new_cent_loc_ratio
             if best_homo_norm > 500 or best_mean_dist > 0.4:
-                # Try to realigned the aligned image with the image
+                # Try to realigned the aligned image with the image - just of info, not used anymore
                 try:
                     realigned, homo_norm_re, covering_re, nb_keypoints_re, mean_dist_re, new_cent_int_re, new_cent_loc_ratio_re = align_and_write(aligned, image, image_name, template_name, best_method_name, best_norm_name, out_path_debug, threshold_dist)
                 except ValueError as e:
@@ -335,34 +335,6 @@ def batch_test():
                 tried_realignment = True
                 print(f"Realigned with homo_norm_re {homo_norm_re}, covering_re {covering_re}, nb_keypoints_re {nb_keypoints_re}, mean_dist_re {mean_dist_re}")
                 cv2.imwrite(f"{out_path_debug}/{image_name}_{template_name}_realigned.jpg", realigned)
-                # if homo_norm_re > 700 or mean_dist_re >= 0.3:
-                #     print(f"Image {image_name} is not a photo of the template beach...")
-                #     scores[image_name] = {
-                #         "template": template_name,
-                #         "aligned": False,
-                #         "is_fake": True,
-                #         "method": best_method_name, 
-                #         "norm": best_norm_name,
-                #         "homography_norm_value": best_homo_norm, 
-                #         "%_covering": best_covering,
-                #         "nb_keypoints": best_nb_keypoints,
-                #         "mean_dist": best_mean_dist,
-                #         "new_cent_int": best_new_cent_int,
-                #         "new_cent_loc_ratio": best_new_cent_loc_ratio,
-                #         "realignment": {
-                #             "homography_norm_value_re": homo_norm_re, 
-                #             "percent_covering_re": covering_re,
-                #             "nb_keypoints_re": nb_keypoints_re,
-                #             "mean_dist_re": mean_dist_re,
-                #             "new_cent_int_re": new_cent_int_re,
-                #             "new_cent_loc_ratio_re": new_cent_loc_ratio_re
-                #         }
-                #     }
-                #     if len(tried) > 0:
-                #         scores[image_name].update({"tried": tried})
-                #     with open(out_path + '/scores.json', 'w', encoding="utf-8") as outfile:
-                #         json.dump(scores, outfile, indent=4)
-                #     continue
 
             if (best_homo_norm > 1500 or best_mean_dist >= 0.5 or best_new_cent_int <= 100 or (best_new_cent_loc_ratio[0] > 0.11 and best_new_cent_loc_ratio[1] > 0.11)):
                 print(f"Image {image_name} is not a photo of the template beach...")
@@ -438,13 +410,22 @@ def batch_test():
                 values_mean_dist = []
                 values_new_cent_int = []
                 values_new_cent_loc_ratio = []
-                
+                nb_aligned = 0
+                nb_non_aligned = 0
+                nb_fake = 0
                 for item in scores.items():
                     try:
                         print(item)
                         if item[0] == "stats":
                             continue
-                        
+                        if "aligned" in item[1]:
+                            if item[1]["aligned"]:
+                                nb_aligned += 1
+                            elif "is_fake" in item[1]:
+                                if item[1]["is_fake"]:
+                                    nb_fake += 1
+                                else:
+                                    nb_non_aligned += 1
                         values_homo.append(item[1]["homography_norm_value"])
                         values_cov.append(item[1]["%_covering"])
                         values_keypoints.append(item[1]["nb_keypoints"])
@@ -456,6 +437,10 @@ def batch_test():
                         print(traceback.format_exc())
                         continue
                 scores["stats"] = {}
+                scores["stats"]["nb_aligned"] = str(nb_aligned)
+                scores["stats"]["nb_non_aligned"] = str(nb_non_aligned)
+                scores["stats"]["nb_fake"] = str(nb_fake)
+                scores["stats"]["total_images"] = str(len(values_homo))
                 if len(values_homo) > 0:
                     scores["stats"]["homography_norm_value"] = {
                             "min": str(np.min(values_homo)),
