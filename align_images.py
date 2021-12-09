@@ -1,38 +1,14 @@
 # coding: utf-8
 
-import numpy as np
-import imutils
 import cv2
-import os
+import numpy as np
 import math
-import traceback
+import imutils
 
-import json
-import glob
-from shutil import copyfile
-import time
-import configparser
-
-def search_array(pixel, img):
-    # Faster than iterating over pixels
-    pixel_tile = np.tile(pixel, (*img.shape[:2], 1))
-    diff = np.sum(np.abs(img - pixel_tile), axis=2)
-    last_idx = -1
-    for idx in np.argwhere(diff == 0):
-        print(f"Found {pixel} at {idx}, value {diff}")
-        last_idx = idx
-    print (len(np.argwhere(diff == 0)), last_idx)
-    return len(np.argwhere(diff == 0)), last_idx
-
-
-def align_images(image, target, target_mask, method="SIFT", norm_name="L2", keep_percent=0.3, threshold_dist=1.5):
-    
+def align_images(image, image_gray, target, target_gray, target_mask, method, norm_name, method_param, keep_percent, threshold_dist, use_mask):
+    print("Aligning with", method, norm_name, method_param)
     heightT, widthT, _ = target.shape
-    image = imutils.resize(image, width=widthT)
     heightI, widthI, _ = image.shape
-
-    imageGray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    targetGray = cv2.cvtColor(target, cv2.COLOR_BGR2GRAY)
 
     if norm_name == "L1":
         norm=cv2.NORM_L1
@@ -40,23 +16,25 @@ def align_images(image, target, target_mask, method="SIFT", norm_name="L2", keep
         norm=cv2.NORM_L2
 
     if method == "ORB":
-        orb = cv2.ORB_create(400)
-        (kpsI, descsI) = orb.detectAndCompute(imageGray, None)
-        (kpsT, descsT) = orb.detectAndCompute(targetGray, None)
+        orb = cv2.ORB_create(method_param)
+        (kpsI, descsI) = orb.detectAndCompute(image_gray, None)
+        (kpsT, descsT) = orb.detectAndCompute(target_gray, None)
         norm = cv2.NORM_HAMMING
     elif method == "SIFT":
-        sift = cv2.xfeatures2d.SIFT_create(2000)
-        kpsI, descsI = sift.detectAndCompute(imageGray, None)
-        kpsT, descsT = sift.detectAndCompute(targetGray, None)
+        sift = cv2.xfeatures2d.SIFT_create(method_param)
+        kpsI, descsI = sift.detectAndCompute(image_gray, None)
+        kpsT, descsT = sift.detectAndCompute(target_gray, None)
     elif method == "SURF":
-        surf = cv2.xfeatures2d.SURF_create(500, extended=True) # not maxfeatures but hessianThreshold
-        kpsI, descsI = surf.detectAndCompute(imageGray, None)
-        kpsT, descsT = surf.detectAndCompute(targetGray, None)
+        surf = cv2.xfeatures2d.SURF_create(method_param, extended=True) # not maxfeatures but hessianThreshold
+        kpsI, descsI = surf.detectAndCompute(image_gray, None)
+        kpsT, descsT = surf.detectAndCompute(target_gray, None)
     elif method == "BRISK":
-        brisk = cv2.BRISK_create()
-        kpsI, descsI = brisk.detectAndCompute(imageGray, None)
-        kpsT, descsT = brisk.detectAndCompute(targetGray, None)
+        brisk = cv2.BRISK_create(method_param)
+        kpsI, descsI = brisk.detectAndCompute(image_gray, None)
+        kpsT, descsT = brisk.detectAndCompute(target_gray, None)
         norm = cv2.NORM_HAMMING
+    else:
+        raise ValueError("Unknown method name: " + str(method))
 
     bf = cv2.BFMatcher(norm, crossCheck=True)
     try:
@@ -96,7 +74,7 @@ def align_images(image, target, target_mask, method="SIFT", norm_name="L2", keep
             # if ptIy > 0.7 or ptTy > 0.7: #North Narrabeen fix that does not work
             #     pass
             # else:
-            if target_mask is not None:
+            if (use_mask and target_mask is not None):
                 ptTrx = round(ptT[0])
                 # TODO Caution if ptTrx > widthT
                 if ptTrx == widthT:
@@ -134,7 +112,7 @@ def align_images(image, target, target_mask, method="SIFT", norm_name="L2", keep
                 ptsT[i] = ptT
                 matches_filtered.append(m)
 
-    nb_keypoints = len(matches)
+    nb_keypoints = len(matches_filtered)
     if nb_keypoints > 0:
         mean_dist = sum_dist/nb_keypoints
     else:
@@ -159,9 +137,7 @@ def align_images(image, target, target_mask, method="SIFT", norm_name="L2", keep
         raise ValueError("Norm inapplicable")
 
     print(f"Homography matrix norm: {homo_norm}")
-
     print(f"Homography det: {str(np.linalg.det(H))}")
-    print("--------")
     
     white = np.zeros([heightI, widthI, 1],dtype=np.uint8)
     white.fill(255)
@@ -188,365 +164,29 @@ def align_images(image, target, target_mask, method="SIFT", norm_name="L2", keep
     print(f"Mean distance: {mean_dist}")
     print(f"New center intensity value: {maxVal}, new center distance ratio {new_center_loc_ratio}")
 
-    return aligned, homo_norm, per_white_pix, nb_keypoints, mean_dist, maxVal, new_center_loc_ratio, matchedVis
+    indicators = {
+        "homography_det": np.linalg.det(H),
+        "homography_norm": homo_norm,
+        "percent_covering": per_white_pix,
+        "nb_keypoints": nb_keypoints,
+        "mean_dist_between_keypoints": mean_dist,
+        "projected_center_intensity": maxVal,
+        "projected_center_location_dist_ratio": new_center_loc_ratio,
+        }
+    return aligned, matchedVis, indicators
 
 
-def batch_test():
-    params = configparser.ConfigParser()
-    params.read("parameters.ini")
-    print(params["Alignment"]["target_path"])
-    start_time = time.time()
-    default_method_name = params["Alignment"]["default_method"]
-    default_norm_name = params["Alignment"]["default_norm"]
-    threshold_dist = params["Alignment"]["threshold_dist"]
-
-    folder_path = params["Alignment"]["folder_path"]
-
-    out_path = folder_path + "/results"
-    try:
-        os.makedirs(out_path)    
-        print("Directory " , out_path,  " created ")
-    except FileExistsError:
-        pass
-    
-    out_path_debug = out_path + "/debug"
-    try:
-        os.makedirs(out_path_debug)    
-        print("Directory " , out_path_debug,  " created ")
-    except FileExistsError:
-        pass
-
-    target_path = params["Alignment"]["target_path"]
-    target_path_4_3 = params["Alignment"]["target_path_4_3"]
-    target_path_16_9 = params["Alignment"]["target_path_16_9"]
-
-    target_mask_path = params["Alignment"]["target_mask_path"]
-    target_mask_path_4_3 = params["Alignment"]["target_mask_path_4_3"]
-    target_mask_path_16_9 = params["Alignment"]["target_mask_path_16_9"]
-
-    if target_path is None:
-        target_name_4_3 = os.path.splitext(os.path.basename(target_path_4_3))[0]
-        target_name_16_9 = os.path.splitext(os.path.basename(target_path_16_9))[0]
-
-        copyfile(target_path_4_3, f"{out_path}/target_{target_name_4_3}.jpg")
-        copyfile(target_path_16_9, f"{out_path}/target_{target_name_16_9}.jpg")
-        
-        target_4_3 = cv2.imread(target_path_4_3)
-        target_16_9 = cv2.imread(target_path_16_9)
-        if target_mask_path_4_3 is not None:
-            target_mask_4_3 = cv2.imread(target_mask_path_4_3, cv2.IMREAD_GRAYSCALE)
-        else:
-            target_mask_4_3 = None
-        if target_mask_path_16_9 is not None:
-            target_mask_16_9 = cv2.imread(target_mask_path_16_9, cv2.IMREAD_GRAYSCALE)
-        else:
-            target_mask_16_9 = None
-
-        print(f"Target name 4/3: {target_name_4_3}")
-        print(f"Target name 16/9: {target_name_16_9}")
-    else:
-        target_name = os.path.splitext(os.path.basename(target_path))[0]
-        copyfile(target_path, f"{out_path}/target_{target_name}.jpg")
-        target = cv2.imread(target_path)
-        if target_mask_path is not None:
-            target_mask = cv2.imread(target_mask_path, cv2.IMREAD_GRAYSCALE)
-        else:
-            target_mask = None
-        print(f"Target name: {target_name}")
-
-    if os.path.isfile(out_path + '/scores.json'):
-        try:
-            with open(out_path + '/scores.json', encoding="utf-8") as json_file:
-                scores = json.load(json_file)
-        except FileNotFoundError as e:
-                print("Exception occured, FileNotFoundError:", e)
-                print(traceback.format_exc())
-                scores = {}
-    else:
-        scores = {}
-
-    images = sorted(glob.glob(folder_path +'/*.jpg'))
-    nb_images = len(images)
-    print(f"{nb_images} images found.")
-    old_target_path = target_path
-
-    for count, image_path in enumerate(images):
-        print("-----------------")
-        print(f"Image number {count}/{len(images)}")
-
-        image_name = os.path.splitext(os.path.basename(image_path))[0]
-        image = cv2.imread(image_path)
-        height, width, channels = image.shape
-        ratio = width/height 
-
-        if old_target_path is None:
-            if abs(ratio - 4/3) <= abs(ratio - 16/9):
-                target_path = target_path_4_3
-                target_name = target_name_4_3
-                target = target_4_3
-                target_mask = target_mask_4_3
-            else:
-                target_path = target_path_16_9
-                target_name = target_name_16_9
-                target = target_16_9
-                target_mask = target_mask_16_9
-
-        print(f"Aligning image {image_name}")
-    
-        if image_path == target_path:
-            print("Target, skipping")
-            pass
-        else:
-            scores[image_name] = {}
-            tried = []
-            tried_realignment = False
-            best_method_name = default_method_name
-            best_norm_name = default_norm_name
-            
-            try:
-                best_aligned, best_homo_norm, best_covering, best_nb_keypoints, best_mean_dist, best_new_cent_int, best_new_cent_loc_ratio = align_and_write(image, target, target_mask, image_name, target_name, best_method_name, best_norm_name, out_path_debug, threshold_dist)
-            except ValueError as e:
-                print("Exception occured, ValueError:", e)
-                print(traceback.format_exc())
-                scores[image_name].update({"aligned": False, "is_fake": True, "exception": str(e)})
-                with open(out_path + '/scores.json', 'w', encoding="utf-8") as outfile:
-                    json.dump(scores, outfile, indent=4)
-                continue
-
-            tried.append({
-                        "method": best_method_name, 
-                        "norm": best_norm_name,
-                        "homography_norm_value": best_homo_norm, 
-                        "%_covering": best_covering,
-                        "nb_keypoints": best_nb_keypoints,
-                        "mean_dist": best_mean_dist,
-                        "new_cent_int": best_new_cent_int,
-                        "new_cent_loc_ratio": best_new_cent_loc_ratio
-                    })
-            if best_homo_norm >= 150 or best_covering <= 90 or best_mean_dist >= 0.30 or best_new_cent_loc_ratio[0] >= 0.08 or best_new_cent_loc_ratio[1] >= 0.08:
-                print(f"Searching for best alignment method")
-                for (method_name, norm_name) in [("SURF", "L1"), ("SURF", "L2"), ("SIFT", "L1"), ("SIFT", "L2"), ("BRISK", "HAMMING")]:
-                    if method_name == default_method_name and norm_name == default_norm_name:
-                        continue
-                    try:
-                        aligned, homo_norm, covering, nb_keypoints, mean_dist, new_cent_int, new_cent_loc_ratio = align_and_write(image, target, target_mask, image_name, target_name, method_name, norm_name, out_path_debug, threshold_dist)
-                    except ValueError as e:
-                        print("Exception occured, ValueError:", e)
-                        print(traceback.format_exc())
-                        scores[image_name].update({"aligned":False, "is_fake": True, "exception": str(e)})
-                        if len(tried) > 0:
-                            scores[image_name].update({"tried": tried})
-                        with open(out_path + '/scores.json', 'w', encoding="utf-8") as outfile:
-                            json.dump(scores, outfile, indent=4)
-                        continue
-                    tried.append({
-                        "method": method_name, 
-                        "norm": norm_name,
-                        "homography_norm_value": homo_norm, 
-                        "%_covering": covering,
-                        "nb_keypoints": nb_keypoints,
-                        "mean_dist": mean_dist,
-                        "new_cent_int": new_cent_int,
-                        "new_cent_loc_ratio": new_cent_loc_ratio
-                    })
-                    if homo_norm < best_homo_norm:
-                        best_homo_norm = homo_norm
-                        best_aligned = aligned
-                        best_method_name = method_name
-                        best_norm_name = norm_name
-                        best_covering = covering
-                        best_nb_keypoints = nb_keypoints
-                        best_mean_dist = mean_dist
-                        best_new_cent_int = new_cent_int
-                        best_new_cent_loc_ratio = new_cent_loc_ratio
-            # if best_homo_norm > 500 or best_mean_dist > 0.4:
-            #     # Try to realigned the aligned image with the image - just of info, not used anymore
-            #     try:
-            #         realigned, homo_norm_re, covering_re, nb_keypoints_re, mean_dist_re, new_cent_int_re, new_cent_loc_ratio_re = align_and_write(aligned, image, target_mask, image_name, target_name, best_method_name, best_norm_name, out_path_debug, threshold_dist)
-            #     except ValueError as e:
-            #             print("Exception occured, ValueError:", e)
-            #             print(traceback.format_exc())
-            #             realigned = None
-            #             homo_norm_re = 9999
-            #             covering_re = 0
-            #             nb_keypoints_re = 0
-            #             mean_dist_re = 100
-            #             new_cent_int_re = 0
-            #             new_cent_loc_ratio_re = (0.5,0.5)
-
-            #     tried_realignment = True
-            #     print(f"Realigned with homo_norm_re {homo_norm_re}, covering_re {covering_re}, nb_keypoints_re {nb_keypoints_re}, mean_dist_re {mean_dist_re}")
-            #     cv2.imwrite(f"{out_path_debug}/{image_name}_{target_name}_realigned.jpg", realigned)
-
-            if (best_homo_norm > 1500 or best_mean_dist >= 0.5 or best_new_cent_int <= 100 or (best_new_cent_loc_ratio[0] > 0.11 and best_new_cent_loc_ratio[1] > 0.11)):
-                print(f"Image {image_name} is not a photo of the target beach...")
-                scores[image_name] = {
-                    "target": target_name,
-                    "aligned": False,
-                    "is_fake": True,
-                    "method": best_method_name, 
-                    "norm": best_norm_name,
-                    "homography_norm_value": best_homo_norm, 
-                    "%_covering": best_covering,
-                    "nb_keypoints": best_nb_keypoints,
-                    "mean_dist": best_mean_dist,
-                    "new_cent_int": best_new_cent_int,
-                    "new_cent_loc_ratio": best_new_cent_loc_ratio,
-                }
-            elif (best_homo_norm > 500 or best_covering <= 80 or best_mean_dist >= 0.4 or best_new_cent_loc_ratio[0] > 0.05 or best_new_cent_loc_ratio[1] > 0.05):
-                print(f"Failed to align image {image_name}, but nevertheless, it seems to be the right beach image")
-                cv2.imwrite(f"{out_path}/{image_name}_{target_name}_tried_to_be_aligned_with_{best_method_name}_{best_norm_name}_.jpg", best_aligned)
-                scores[image_name] = {
-                    "target":target_name,
-                    "aligned": False,
-                    "is_fake": False,
-                    "method": best_method_name, 
-                    "norm": best_norm_name, 
-                    "homography_norm_value": best_homo_norm, 
-                    "%_covering": best_covering,
-                    "nb_keypoints": best_nb_keypoints,
-                    "mean_dist": best_mean_dist, 
-                    "new_cent_int": best_new_cent_int,
-                    "new_cent_loc_ratio": best_new_cent_loc_ratio
-                }
-            else:
-                print(f"Image {image_name} aligned with {best_method_name}, {best_norm_name} with score {best_homo_norm}")
-                cv2.imwrite(f"{out_path}/{image_name}_{target_name}_aligned_with_{best_method_name}_{best_norm_name}_.jpg", best_aligned)
-                scores[image_name] = {
-                    "target": target_name,
-                    "aligned": True,
-                    "is_fake": False,
-                    "method": best_method_name, 
-                    "norm": best_norm_name,
-                    "homography_norm_value": best_homo_norm, 
-                    "%_covering": best_covering,
-                    "nb_keypoints": best_nb_keypoints,
-                    "mean_dist": best_mean_dist,
-                    "new_cent_int": best_new_cent_int,
-                    "new_cent_loc_ratio": best_new_cent_loc_ratio
-                }
-            # if tried_realignment:
-            #     scores[image_name].update({
-            #         "realignment": {
-            #             "homography_norm_value_re": homo_norm_re, 
-            #             "percent_covering_re": covering_re,
-            #             "nb_keypoints_re": nb_keypoints_re,
-            #             "mean_dist_re": mean_dist_re,
-            #             "new_cent_int_re": new_cent_int_re,
-            #             "new_cent_loc_ratio_re": new_cent_loc_ratio_re
-            #         }})
-            if len(tried) > 0:
-                        scores[image_name].update({"tried": tried})
-            aligned_ov = best_aligned.copy()
-            cv2.addWeighted(target, 0.5, best_aligned, 0.5, 0, aligned_ov)
-            cv2.imwrite(f"{out_path}/{image_name}_{target_name}_{best_method_name}_{best_norm_name}_overlay.jpg", aligned_ov)
-            with open(out_path + '/scores.json', 'w', encoding="utf-8") as outfile:
-                json.dump(scores, outfile, indent=4)
-    if os.path.isfile(out_path + '/scores.json'):
-        try:
-            with open(out_path + '/scores.json', encoding="utf-8") as json_file:
-                scores = json.load(json_file)
-                values_homo = []
-                values_cov = []
-                values_keypoints = []
-                values_mean_dist = []
-                values_new_cent_int = []
-                values_new_cent_loc_ratio = []
-                nb_aligned = 0
-                nb_non_aligned = 0
-                nb_fake = 0
-                for item in scores.items():
-                    try:
-                        print(item)
-                        if item[0] == "stats":
-                            continue
-                        if "aligned" in item[1]:
-                            if item[1]["aligned"]:
-                                nb_aligned += 1
-                            elif "is_fake" in item[1]:
-                                if item[1]["is_fake"]:
-                                    nb_fake += 1
-                                else:
-                                    nb_non_aligned += 1
-                        values_homo.append(item[1]["homography_norm_value"])
-                        values_cov.append(item[1]["%_covering"])
-                        values_keypoints.append(item[1]["nb_keypoints"])
-                        values_mean_dist.append(item[1]["mean_dist"])
-                        values_new_cent_int.append(item[1]["new_cent_int"])
-                        values_new_cent_loc_ratio.append(item[1]["new_cent_loc_ratio"])
-                    except KeyError as e:
-                        print("Exception occured, Key error:", e)
-                        print(traceback.format_exc())
-                        continue
-                scores["stats"] = {}
-                scores["stats"]["nb_aligned"] = str(nb_aligned)
-                scores["stats"]["nb_non_aligned"] = str(nb_non_aligned)
-                scores["stats"]["nb_fake"] = str(nb_fake)
-                scores["stats"]["total_images"] = str(len(values_homo))
-                if len(values_homo) > 0:
-                    scores["stats"]["homography_norm_value"] = {
-                            "min": str(np.min(values_homo)),
-                            "max": str(np.max(values_homo)),
-                            "mean": str(np.mean(values_homo)),
-                            "median": str(np.median(values_homo))
-                        }
-                if len(values_cov) > 0:
-                    scores["stats"]["%_covering"] = {
-                            "min": str(np.min(values_cov)),
-                            "max": str(np.max(values_cov)),
-                            "mean": str(np.mean(values_cov)),
-                            "median": str(np.median(values_cov))
-                        }
-                if len(values_keypoints) > 0:
-                    scores["stats"]["nb_keypoints"] = {
-                            "min": str(np.min(values_keypoints)),
-                            "max": str(np.max(values_keypoints)),
-                            "mean": str(np.mean(values_keypoints)),
-                            "median": str(np.median(values_keypoints))
-                        }
-                if len(values_mean_dist) > 0:
-                    scores["stats"]["mean_dist"] = {
-                            "min": str(np.min(values_mean_dist)),
-                            "max": str(np.max(values_mean_dist)),
-                            "mean": str(np.mean(values_mean_dist)),
-                            "median": str(np.median(values_mean_dist))
-                        }
-                if len(values_new_cent_int) > 0:
-                    scores["stats"]["new_cent_int"] = {
-                            "min": str(np.min(values_new_cent_int)),
-                            "max": str(np.max(values_new_cent_int)),
-                            "mean": str(np.mean(values_new_cent_int)),
-                            "median": str(np.median(values_new_cent_int))
-                        }
-                if len(values_new_cent_loc_ratio) > 0:
-                    scores["stats"]["new_cent_loc_ratio"] = {
-                            "min": str(np.min(values_new_cent_loc_ratio)),
-                            "max": str(np.max(values_new_cent_loc_ratio)),
-                            "mean": str(np.mean(values_new_cent_loc_ratio)),
-                            "median": str(np.median(values_new_cent_loc_ratio))
-                        }
-                scores["stats"].update({
-                    "comp_time_minutes": (time.time() - start_time) / 60
-                })
-                with open(out_path + '/scores.json', 'w', encoding="utf-8") as outfile:
-                    json.dump(scores, outfile, indent=4)
-        except FileNotFoundError as e:
-            print("Exception occured, FileNotFoundError:", e)
-            print(traceback.format_exc())
-
-
-def align_and_write(image, target, target_mask, image_name, target_name, method_name, norm_name, out_path_debug, threshold_dist):
+def align_and_write(image, image_gray, target, target_gray, target_mask, image_name, target_name, method_name, norm_name,
+     method_param, out_path_debug, keep_percent, threshold_dist, use_mask):
     debug_image_name = f"{image_name}_{target_name}_{method_name}_{norm_name}_descriptors_matching.jpg"
 
-    aligned, homo_norm, covering, nb_keypoints, mean_dist, new_cent_int, new_cent_loc_ratio, matchedVis = align_images(image, target, target_mask, method=method_name, norm_name=norm_name, threshold_dist=threshold_dist)
+    aligned, matchedVis, indicators = align_images(image, image_gray, target, target_gray, 
+        target_mask, method_name, norm_name, method_param, keep_percent, threshold_dist, use_mask)
     cv2.imwrite(f"{out_path_debug}/{debug_image_name}", matchedVis)
 
     aligned_ov = aligned.copy()
     cv2.addWeighted(target, 0.5, aligned, 0.5, 0, aligned_ov)
-    cv2.imwrite(f"{out_path_debug}/{image_name}_{target_name}_{method_name}_{norm_name}_overlay.jpg", aligned_ov)
+    cv2.imwrite(f"{out_path_debug}/{image_name}_{target_name}_{method_name}_{norm_name}_overlay.jpg", 
+        aligned_ov)
     
-    return aligned, homo_norm, covering, nb_keypoints, mean_dist, new_cent_int, new_cent_loc_ratio
-
-
-if __name__ == "__main__":
-    batch_test()
+    return aligned, indicators
