@@ -33,6 +33,7 @@ def export_stats(scores_path, start_time):
                                     nb_fake += 1
                                 else:
                                     nb_non_aligned += 1
+                        
                         values_det.append(item[1]["homography_det"])
                         values_homo.append(item[1]["homography_norm_value"])
                         values_cov.append(item[1]["%_covering"])
@@ -41,8 +42,8 @@ def export_stats(scores_path, start_time):
                         values_new_cent_int.append(item[1]["new_cent_int"])
                         values_new_cent_loc_ratio.append(item[1]["new_cent_loc_ratio"])
                     except KeyError as e:
-                        print("Exception occured, Key error:", e)
-                        print(traceback.format_exc())
+                        # print("Exception occured, Key error:", e)
+                        # print(traceback.format_exc())
                         continue
                 scores["stats"] = {}
                 scores["stats"]["nb_aligned"] = str(nb_aligned)

@@ -1,6 +1,5 @@
 # coding: utf-8
 
-import imutils
 import cv2
 import os
 import traceback
@@ -8,41 +7,53 @@ import json
 import glob
 from shutil import copyfile
 import time
-import configparser
+import yaml
 
-from align_images import align_and_write
+from align_with_local_descriptors import align_and_write
+from align_with_dfm import align_with_dfm
 from utils import export_stats
+from deepFeatureMatcher import DeepFeatureMatcher
 
 
 def get_method_param_value(method_name, params):
     if method_name == "ORB":
-        method_param = int(params["Alignment"]["orb_max_features"])
+        method_param = int(params["Local_Descriptors"]["orb_max_features"])
     elif method_name == "SIFT":
-        method_param = int(params["Alignment"]["sift_max_features"])
+        method_param = int(params["Local_Descriptors"]["sift_max_features"])
     elif method_name == "SURF":
-        method_param = int(params["Alignment"]["surf_hessian_threshold"])
+        method_param = int(params["Local_Descriptors"]["surf_hessian_threshold"])
     elif method_name == "BRISK":
-        method_param = int(params["Alignment"]["brisk_thresh"])
+        method_param = int(params["Local_Descriptors"]["brisk_thresh"])
     else:
         method_param = None
     return method_param
 
 def format_parameters_to_try(params):
-    values = params["Retry"]["parameters_to_try"].split(",")
-    return [value.split("-") for value in values]
-
+    return [value.split("-") for value in params["Retry"]["parameters_to_try"]]
 
 def batch_test():
-    params = configparser.ConfigParser(allow_no_value=True)
-    params.read("parameters.ini")
+    with open("parameters.yml", "r") as configfile:
+        params = yaml.safe_load(configfile)
     print(params["Alignment"]["target_path"])   
     start_time = time.time()
-    keep_percent = float(params["Alignment"]["keep_percent"])
-    default_method_name = params["Alignment"]["default_method"]
-    default_norm_name = params["Alignment"]["default_norm"]
-    threshold_dist = float(params["Alignment"]["threshold_dist"])
+    default_method_name = params["Alignment"]["method"]
+
+    if default_method_name == "DFM":
+        enable_two_stages = params["DFM"]['enable_two_stages']
+        model = params["DFM"]['model']
+        ratio_th = params["DFM"]['ratio_th']
+        bidirectional = params["DFM"]['bidirectional']
+        force_cpu = params["DFM"]['force_cpu']
+        fm = DeepFeatureMatcher(enable_two_stage = enable_two_stages, model = model, 
+                ratio_th = ratio_th, bidirectional = bidirectional , force_cpu=force_cpu)
+        default_norm_name = None
+    else:
+        keep_percent = float(params["Local_Descriptors"]["keep_percent"])
+        default_norm_name = params["Local_Descriptors"]["norm"]
+        threshold_dist = float(params["Local_Descriptors"]["threshold_dist"])
+        
     folder_path = params["Alignment"]["folder_path"]
-    use_mask = params.getboolean("Alignment", "use_mask")
+    use_mask = params["Alignment"]["use_mask"]
     
     out_path = folder_path + "/results"
     try:
@@ -58,23 +69,26 @@ def batch_test():
     except FileExistsError:
         pass
 
+    use_different_target_ratio = params["Alignment"]["use_different_target_ratio"]
+
     target_path = params["Alignment"]["target_path"]
     target_path_4_3 = params["Alignment"]["target_path_4_3"]
     target_path_16_9 = params["Alignment"]["target_path_16_9"]
 
-    target_mask_path = params["Alignment"]["mask_path"]
-    target_mask_path_4_3 = params["Alignment"]["mask_path_4_3"]
-    target_mask_path_16_9 = params["Alignment"]["mask_path_16_9"]
+    target_mask_path = params["Masks"]["mask_path"]
+    target_mask_path_4_3 = params["Masks"]["mask_path_4_3"]
+    target_mask_path_16_9 = params["Masks"]["mask_path_16_9"]
 
-    if target_path is None:
+    if use_different_target_ratio:
         target_name_4_3 = os.path.splitext(os.path.basename(target_path_4_3))[0]
         target_name_16_9 = os.path.splitext(os.path.basename(target_path_16_9))[0]
 
         copyfile(target_path_4_3, f"{out_path}/target_{target_name_4_3}.jpg")
         copyfile(target_path_16_9, f"{out_path}/target_{target_name_16_9}.jpg")
         
-        target_4_3 = cv2.imread(target_path_4_3)
-        target_16_9 = cv2.imread(target_path_16_9)
+        target_4_3 = cv2.imread(target_path_4_3, cv2.IMREAD_COLOR)
+        target_16_9 = cv2.imread(target_path_16_9, cv2.IMREAD_COLOR)
+
         if target_mask_path_4_3 is not None:
             target_mask_4_3 = cv2.imread(target_mask_path_4_3, cv2.IMREAD_GRAYSCALE)
         else:
@@ -89,7 +103,9 @@ def batch_test():
     else:
         target_name = os.path.splitext(os.path.basename(target_path))[0]
         copyfile(target_path, f"{out_path}/target_{target_name}.jpg")
-        target = cv2.imread(target_path)
+
+        target = cv2.imread(target_path, cv2.IMREAD_COLOR)
+    
         heightT, widthT, _ = target.shape
 
         if target_mask_path is not None:
@@ -118,15 +134,15 @@ def batch_test():
 
     for count, image_path in enumerate(images):
         print("-----------------")
-        print(f"Image number {count}/{len(images)}")
+        print(f"Image number {count + 1}/{len(images)}")
 
         image_name = os.path.splitext(os.path.basename(image_path))[0]
         image = cv2.imread(image_path)
         image_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
         height, width, _ = image.shape
-        if params.getboolean('Alignment', 'resize_image'):
-            image = imutils.resize(image, width=widthT)
+        if params['Alignment']['resize_image']:
+            image = cv2.resize(image, (width, height), interpolation=cv2.INTER_AREA)
         ratio = width/height 
 
         if old_target_path is None:
@@ -152,19 +168,23 @@ def batch_test():
             tried = []
             best_method_name = default_method_name
             best_norm_name = default_norm_name
-            method_param = get_method_param_value(best_method_name, params)
-            try:
-                best_aligned, best_indicators = align_and_write(image, image_gray, target, 
-                    target_gray, target_mask, image_name, target_name, best_method_name, 
-                    best_norm_name, method_param,  out_path_debug, keep_percent, threshold_dist, 
-                    use_mask)
-            except ValueError as e:
-                print("Exception occured, ValueError:", e)
-                print(traceback.format_exc())
-                scores[image_name].update({"aligned": False, "is_fake": True, "exception": str(e)})
-                with open(out_path + '/scores.json', 'w', encoding="utf-8") as outfile:
-                    json.dump(scores, outfile, indent=4)
-                continue
+            if default_method_name == "DFM":
+                best_aligned, best_indicators = align_with_dfm(fm, image, target, image_name, 
+                    target_name, out_path_debug)
+            else:
+                method_param = get_method_param_value(best_method_name, params)
+                try:
+                    best_aligned, best_indicators = align_and_write(image, image_gray, target, 
+                        target_gray, target_mask, image_name, target_name, best_method_name, 
+                        best_norm_name, method_param,  out_path_debug, keep_percent, threshold_dist, 
+                        use_mask)
+                except ValueError as e:
+                    print("Exception occured, ValueError:", e)
+                    print(traceback.format_exc())
+                    scores[image_name].update({"aligned": False, "is_fake": True, "exception": str(e)})
+                    with open(out_path + '/scores.json', 'w', encoding="utf-8") as outfile:
+                        json.dump(scores, outfile, indent=4)
+                    continue
 
             tried.append({
                 "method": best_method_name, 
@@ -177,7 +197,7 @@ def batch_test():
                 "new_cent_int": best_indicators["projected_center_intensity"],
                 "new_cent_loc_ratio": best_indicators["projected_center_location_dist_ratio"]
             })
-            retry_alignment = params.getboolean("Retry", "retry_alignment")
+            retry_alignment = params["Retry"]["retry_alignment"]
             if retry_alignment and \
                 (float(best_indicators["homography_norm"]) \
                     >= float(params["Retry"]["homography_norm_max"]) or
@@ -273,6 +293,7 @@ def batch_test():
             if len(tried) > 0:
                 scores[image_name].update({"tried": tried})
             aligned_ov = best_aligned.copy()
+
             cv2.addWeighted(target, 0.5, best_aligned, 0.5, 0, aligned_ov)
             cv2.imwrite(f"{out_path}/{image_name}_{target_name}_{best_method_name}_{best_norm_name}_overlay.jpg", aligned_ov)
             with open(out_path + '/scores.json', 'w', encoding="utf-8") as outfile:
