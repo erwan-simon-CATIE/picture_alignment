@@ -1,0 +1,49 @@
+Alignment:
+    method: 'DFM'
+    folder_path : '/home/ludwig/Dev/Littoview/Benchmark_Aligenement_Photos/Images_Santocha'
+    use_different_target_ratio: False
+    target_path: '/home/ludwig/Dev/Littoview/Benchmark_Aligenement_Photos/Images_Santocha/reference_1637681040.Tue.Nov.23_17_24_00.CEST.2021.santocha.snap.ClementG.jpg' # if use_different_target_ratio is False
+    #target_path: '/home/ludwig/Dev/Littoview/Benchmark_Aligenement_Photos/Images Lafitenia/Processed/reference_1640089980.Tue.Dec.21_14_33_00.CEST.2021.lafitenia.snap.ClementGoldman.jpg'
+    target_path_4_3: # fill if use_different_target_ratio is True
+    target_path_16_9: # fill if use_different_target_ratio is True
+    use_mask: False # not compatible with DFM currently
+    resize_image: True
+
+Masks:
+    mask_path : '/home/ludwig/Dev/Littoview/20211123_132356_Test_Cible1_Poteau5_mask.png' # fill if use_different_target_ratio is False
+    mask_path_4_3: # fill if use_different_target_ratio is True
+    mask_path_16_9: # fill if use_different_target_ratio is True
+
+DFM:
+    enable_two_stages: True
+    model: 'VGG19'
+    ratio_th: [0.9, 0.9, 0.9, 0.9, 0.95, 1.0]
+    bidirectional: True
+    display_results: True
+    output_directory: 'results'
+    force_cpu: True
+
+Local_Descriptors:
+    keep_percent: 0.5
+    threshold_dist: 0.2
+    norm: 'L2' #default_norm is only applicable to SIFT and SURF, for ORB and BRISK the norm is HAMMING and it cannot be changed
+    sift_max_features: 2000
+    orb_max_features: 400
+    brisk_thresh: 30
+    surf_hessian_threshold: 500
+
+Retry:
+    retry_alignment: False
+    parameters_to_try: ['SURF-L1', 'SURF-L2' , 'SIFT-L1', 'SIFT-L2', 'BRISK-HAMMING']
+    homography_norm_max: 150
+    percent_covering_min: 90
+    mean_dist_between_keypoints: 0.30
+    projected_center_intensity_min:
+    projected_center_location_dist_ratio_max: 0.08
+
+Filter:
+    homography_norm_max: 500
+    percent_covering_min: 80
+    mean_dist_between_keypoints: 0.4
+    projected_center_intensity_min:
+    projected_center_location_dist_ratio_max: 0.05
