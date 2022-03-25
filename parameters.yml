@@ -1,9 +1,20 @@
 Alignment:
-    method: 'DFM'
-    folder_path : '/home/ludwig/Dev/Littoview/Benchmark_Aligenement_Photos/Images_Santocha'
+    method: 'LoFTR' # possible values: SIFT, SURF, BRISK, ORB, DFM, LoFTR
+    folder_path : '/home/ludwig/Dev/Littoview/Benchmark_Aligenement_Photos/Images_Santocha/'
+    # folder_path: '/home/ljoffroy/dev/littoview/loftr/images/unofficial/Lacanau_Kayok_VueNord (copie)/'
+    # folder_path: '/home/ljoffroy/dev/littoview/loftr/images/aws_15-03-2022/Images/lacanau/Processed/2022/'
+    # folder_path: '/home/ljoffroy/dev/littoview/loftr/images/aws_15-03-2022/Images/lafitenia/Processed/2021/'
+    # folder_path: '/home/ljoffroy/dev/littoview/loftr/images/test_rapide'
+    # folder_path: '/home/ljoffroy/dev/littoview/loftr/images/aws_15-03-2022/Images/lafitenia/Processed/2022/'
+    # folder_path: '/home/ljoffroy/dev/littoview/loftr/images/aws_15-03-2022/Images/santocha/Processed/2021/'
+    # folder_path: '/home/ljoffroy/dev/littoview/loftr/images/aws_15-03-2022/Images/santocha/Processed/2022/'
     use_different_target_ratio: False
     target_path: '/home/ludwig/Dev/Littoview/Benchmark_Aligenement_Photos/Images_Santocha/reference_1637681040.Tue.Nov.23_17_24_00.CEST.2021.santocha.snap.ClementG.jpg' # if use_different_target_ratio is False
-    #target_path: '/home/ludwig/Dev/Littoview/Benchmark_Aligenement_Photos/Images Lafitenia/Processed/reference_1640089980.Tue.Dec.21_14_33_00.CEST.2021.lafitenia.snap.ClementGoldman.jpg'
+    # target_path: '/home/ljoffroy/dev/littoview/loftr/images/unofficial/Lacanau_Kayok_VueNord (copie)/20201114_170555.jpg' # if use_different_target_ratio is False
+    # target_path: '/home/ljoffroy/dev/littoview/loftr/images/aws_15-03-2022/Images/lacanau/Processed/2022/1646402760.Fri.Mar.04_15_06_00.CET.2022.lacanau.web.Lola.jpg'
+    # target_path: '/home/ljoffroy/dev/littoview/loftr/images/aws_15-03-2022/Images/lafitenia/Target Image/reference_1640089980.Tue.Dec.21_14_33_00.CEST.2021.lafitenia.snap.ClementGoldman.jpg'
+    # target_path: '/home/ljoffroy/dev/littoview/loftr/images/aws_15-03-2022/Images/santocha/Target Image/reference_1637681040.Tue.Nov.23_17_24_00.CEST.2021.santocha.snap.ClementG.jpg'
+    # target_path: '/home/ludwig/Dev/Littoview/Benchmark_Aligenement_Photos/Images Lafitenia/Processed/reference_1640089980.Tue.Dec.21_14_33_00.CEST.2021.lafitenia.snap.ClementGoldman.jpg'
     target_path_4_3: # fill if use_different_target_ratio is True
     target_path_16_9: # fill if use_different_target_ratio is True
     use_mask: False # not compatible with DFM currently
@@ -21,13 +32,13 @@ DFM:
     bidirectional: True
     display_results: True
     output_directory: 'results'
-    force_cpu: True
+    force_cpu: False
 
 Local_Descriptors:
     keep_percent: 0.5
     threshold_dist: 0.2
     norm: 'L2' #default_norm is only applicable to SIFT and SURF, for ORB and BRISK the norm is HAMMING and it cannot be changed
-    sift_max_features: 2000
+    sift_max_features: 5000
     orb_max_features: 400
     brisk_thresh: 30
     surf_hessian_threshold: 500

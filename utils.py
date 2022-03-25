@@ -4,6 +4,45 @@ import json
 import traceback
 import numpy as np
 import time
+import cv2
+import math
+
+def image_resize_keep_ratio(image, width=None, height=None):
+    if width is None and height is None:
+        return image
+
+    (h, w) = image.shape[:2]
+    
+    if height is None:
+        r = width / float(w)
+        dim = (width, int(h * r))
+    else:
+        r = height / float(h)
+        dim = (int(w * r), height)
+    resized = cv2.resize(image, dim, interpolation=cv2.INTER_CUBIC)
+
+    return resized
+
+def draw_matches(img_A, img_B, keypoints0, keypoints1):
+
+    p1s = []
+    p2s = []
+    dmatches = []
+    sum_dist = 0
+    hA, wA, _ = img_A.shape
+    hB, wB, _ = img_B.shape
+    for i, (x1, y1) in enumerate(keypoints0):
+            
+        p1s.append(cv2.KeyPoint(x1, y1, 1))
+        p2s.append(cv2.KeyPoint(keypoints1[i][0], keypoints1[i][1], 1))
+        dist = math.sqrt(((x1/wA) - (keypoints1[i][0]/wB))**2 + ((y1/hA) - (keypoints1[i][1]/hB))**2)
+        sum_dist += dist
+        j = len(p1s) - 1
+        dmatches.append(cv2.DMatch(j, j, 1))
+    
+    matched_images = cv2.drawMatches(img_A, p1s, img_B,p2s, dmatches, None)
+
+    return matched_images, len(dmatches), sum_dist
 
 def export_stats(scores_path, start_time):
    if os.path.isfile(scores_path):

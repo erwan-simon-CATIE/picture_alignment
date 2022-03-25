@@ -56,12 +56,14 @@ def align_with_dfm(fm, img_to_align, img_target, image_name, target_name, out_pa
     n_white_pix = np.sum(aligned_mask == 255)
     per_white_pix = 100 * n_white_pix / (heightT * widthT)
 
+    if nb_matches > 0:
+        mean_dist = sum_dist/nb_matches
     indicators = {
         "homography_det": np.linalg.det(H),
         "homography_norm": np.linalg.norm(H),
         "percent_covering": per_white_pix,
         "nb_keypoints": nb_matches,
-        "mean_dist_between_keypoints": sum_dist/nb_matches,
+        "mean_dist_between_keypoints": mean_dist,
         "projected_center_intensity": maxVal,
         "projected_center_location_dist_ratio": new_center_loc_ratio
         }

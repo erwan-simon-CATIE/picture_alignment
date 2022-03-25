@@ -11,8 +11,12 @@ import yaml
 
 from align_with_local_descriptors import align_and_write
 from align_with_dfm import align_with_dfm
-from utils import export_stats
+from align_with_loftr import align_with_loftr
+from utils import export_stats, image_resize_keep_ratio
+
 from deepFeatureMatcher import DeepFeatureMatcher
+from LoFTR.src.loftr import LoFTR, default_cfg
+
 
 
 def get_method_param_value(method_name, params):
@@ -44,8 +48,16 @@ def batch_test():
         ratio_th = params["DFM"]['ratio_th']
         bidirectional = params["DFM"]['bidirectional']
         force_cpu = params["DFM"]['force_cpu']
-        fm = DeepFeatureMatcher(enable_two_stage = enable_two_stages, model = model, 
-                ratio_th = ratio_th, bidirectional = bidirectional , force_cpu=force_cpu)
+        fm = DeepFeatureMatcher(enable_two_stage = enable_two_stages, model = model, ratio_th = ratio_th, 
+                bidirectional = bidirectional , force_cpu=force_cpu)
+        default_norm_name = None
+    elif default_method_name == "LoFTR":
+        import torch
+        # device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        device = torch.device('cpu')
+        matcher = LoFTR(config=default_cfg)
+        matcher.load_state_dict(torch.load("LoFTR/weights/outdoor_ds.ckpt")['state_dict'])
+        matcher = matcher.eval().to(device)
         default_norm_name = None
     else:
         keep_percent = float(params["Local_Descriptors"]["keep_percent"])
@@ -55,6 +67,7 @@ def batch_test():
     folder_path = params["Alignment"]["folder_path"]
     use_mask = params["Alignment"]["use_mask"]
     
+
     out_path = folder_path + "/results"
     try:
         os.makedirs(out_path)    
@@ -140,10 +153,9 @@ def batch_test():
         image = cv2.imread(image_path)
         image_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-        height, width, _ = image.shape
-        if params['Alignment']['resize_image']:
-            image = cv2.resize(image, (width, height), interpolation=cv2.INTER_AREA)
-        ratio = width/height 
+        heightI, widthI, _ = image.shape
+        
+        ratio = widthI/heightI
 
         if old_target_path is None:
             if abs(ratio - 4/3) <= abs(ratio - 16/9):
@@ -158,6 +170,14 @@ def batch_test():
                 target_mask = target_mask_16_9
 
         print(f"Aligning image {image_name}")
+
+        if params['Alignment']['resize_image']:
+            heightT, widthT, _ = target.shape
+
+            if widthI >= heightI:
+                image = image_resize_keep_ratio(image, width=int(widthT))
+            else:
+                image = image_resize_keep_ratio(image, height=int(widthT))
     
         method_param = None
         if image_path == target_path:
@@ -169,14 +189,33 @@ def batch_test():
             best_method_name = default_method_name
             best_norm_name = default_norm_name
             if default_method_name == "DFM":
-                best_aligned, best_indicators = align_with_dfm(fm, image, target, image_name, 
-                    target_name, out_path_debug)
+                try:
+                    best_aligned, best_indicators = align_with_dfm(fm, image, target, image_name, 
+                        target_name, out_path_debug)
+                except RuntimeError as e:
+                    print("Exception occured, RuntimeError:", e)
+                    print(traceback.format_exc())
+                    scores[image_name].update({"aligned": False, "exception": str(e)})
+                    with open(out_path + '/scores.json', 'w', encoding="utf-8") as outfile:
+                        json.dump(scores, outfile, indent=4)
+                    continue
+            elif default_method_name == "LoFTR":
+                try:
+                    best_aligned, best_indicators = align_with_loftr(matcher, image, target, image_name, 
+                        target_name, out_path_debug)
+                except RuntimeError as e:
+                    print("Exception occured, RuntimeError:", e)
+                    print(traceback.format_exc())
+                    scores[image_name].update({"aligned": False, "exception": str(e)})
+                    with open(out_path + '/scores.json', 'w', encoding="utf-8") as outfile:
+                        json.dump(scores, outfile, indent=4)
+                    continue
             else:
                 method_param = get_method_param_value(best_method_name, params)
                 try:
                     best_aligned, best_indicators = align_and_write(image, image_gray, target, 
                         target_gray, target_mask, image_name, target_name, best_method_name, 
-                        best_norm_name, method_param,  out_path_debug, keep_percent, threshold_dist, 
+                        best_norm_name, method_param, out_path_debug, keep_percent, threshold_dist, 
                         use_mask)
                 except ValueError as e:
                     print("Exception occured, ValueError:", e)
@@ -253,6 +292,12 @@ def batch_test():
                     > float(params["Filter"]["projected_center_location_dist_ratio_max"]) or
                 float(best_indicators["projected_center_location_dist_ratio"][1]) \
                     > float(params["Filter"]["projected_center_location_dist_ratio_max"])):
+                    
+                print(float(best_indicators["homography_norm"]),float(params["Filter"]["homography_norm_max"]))
+                print(float(best_indicators["percent_covering"]) , float(params["Filter"]["percent_covering_min"]))
+                print(float(best_indicators["mean_dist_between_keypoints"]), float(params["Filter"]["mean_dist_between_keypoints"]))
+                print(float(best_indicators["projected_center_location_dist_ratio"][0]), float(params["Filter"]["projected_center_location_dist_ratio_max"]))
+                print(float(best_indicators["projected_center_location_dist_ratio"][1]), float(params["Filter"]["projected_center_location_dist_ratio_max"]))
                 print(f"Failed to align image {image_name}")
                 cv2.imwrite(f"{out_path}/{image_name}_{target_name}_tried_to_align_with_{best_method_name}_{best_norm_name}_.jpg",
                     best_aligned)

@@ -6,7 +6,8 @@ import math
 import imutils
 import traceback
 
-def align_images(image, image_gray, target, target_gray, target_mask, method, norm_name, method_param, keep_percent, threshold_dist, use_mask):
+def align_images(image, image_gray, target, target_gray, target_mask, method, norm_name, method_param, 
+        keep_percent, threshold_dist, use_mask, findPlanarTransformation):
     print("Aligning with", method, norm_name, method_param)
     heightT, widthT, _ = target.shape
     heightI, widthI, _ = image.shape
@@ -129,7 +130,13 @@ def align_images(image, image_gray, target, target_gray, target_mask, method, no
 
     # Compute the homography matrix between the two sets of matched points
     if len(matches_filtered) > 0:
-        (H, mask) = cv2.findHomography(ptsI, ptsT, method=cv2.RANSAC)
+        if findPlanarTransformation:
+            print("findHomography")
+            (H, mask) = cv2.findHomography(ptsI, ptsT, method=cv2.RANSAC)
+        else:
+            print("findFundamentalMat")
+            (H, mask) = cv2.findFundamentalMat(ptsI, ptsT, method=cv2.FM_RANSAC)
+        print(H)
     else:
         raise ValueError("No matches")
     if H is None:
@@ -315,11 +322,12 @@ def align_and_write(image, image_gray, target, target_gray, target_mask, image_n
 
 
 def align_and_write(image, image_gray, target, target_gray, target_mask, image_name, target_name, method_name, norm_name,
-     method_param, out_path_debug, keep_percent, threshold_dist, use_mask):
+     method_param, out_path_debug, keep_percent, threshold_dist, use_mask, findPlanarTransformation):
     debug_image_name = f"{image_name}_{target_name}_{method_name}_{norm_name}_matches.jpg"
 
     aligned, matchedVis, indicators = align_images(image, image_gray, target, target_gray, 
-        target_mask, method_name, norm_name, method_param, keep_percent, threshold_dist, use_mask)
+        target_mask, method_name, norm_name, method_param, keep_percent, threshold_dist, 
+        use_mask, findPlanarTransformation)
     cv2.imwrite(f"{out_path_debug}/{debug_image_name}", matchedVis)
 
     aligned_ov = aligned.copy()
