@@ -4,6 +4,9 @@
 #
 #    pipenv lock --requirements
 #
+# ATTENTION : pour pouvoir utiliser les descripteurs locaux (sift et surf), il faut utiliser les versions suivantes d'OpenCV
+# opencv-contrib-python==3.4.0.12
+# opencv-python==3.4.2.16
 
 -i https://pypi.org/simple
 certifi==2022.6.15; python_version >= '3.6'
