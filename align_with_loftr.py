@@ -36,13 +36,13 @@ def align_with_loftr(matcher, img_to_align, img_target, image_name, target_name,
 
     print("resize_factor", resize_factor)
 
-    # if (widthT > 2050) or (heightT > 2050) or (widthI > 2050) or (heightI > 2050):
-    #     img_to_align_min = cv2.resize(img_to_align, (int(widthI * resize_factor), int(heightI * resize_factor)), interpolation=cv2.INTER_CUBIC) 
-    #     img_target_min = cv2.resize(img_target, (int(widthT * resize_factor), int(heightT * resize_factor)), interpolation=cv2.INTER_CUBIC) 
-    # else:
-    resize_factor = 1
-    img_to_align_min = img_to_align
-    img_target_min = img_target
+    if (widthT > 2050) or (heightT > 2050) or (widthI > 2050) or (heightI > 2050):
+        img_to_align_min = cv2.resize(img_to_align, (int(widthI * resize_factor), int(heightI * resize_factor)), interpolation=cv2.INTER_CUBIC) 
+        img_target_min = cv2.resize(img_target, (int(widthT * resize_factor), int(heightT * resize_factor)), interpolation=cv2.INTER_CUBIC) 
+    else:
+        resize_factor = 1
+        img_to_align_min = img_to_align
+        img_target_min = img_target
 
     heightI_min, widthI_min, _ = img_to_align_min.shape
     heightT_min, widthT_min, _ = img_target_min.shape

@@ -1,0 +1,84 @@
+{
+    "test_picture": {
+        "target": "reference",
+        "aligned": true,
+        "is_fake": false,
+        "method": "LoFTR",
+        "norm": null,
+        "homography_det": 1.0251080772737287,
+        "homography_norm_value": 29.59889668430602,
+        "%_covering": 97.94570847243219,
+        "nb_keypoints": 4755,
+        "mean_dist": 0.02085057413964519,
+        "new_cent_int": 255.0,
+        "new_cent_loc_ratio": [
+            0.007440476190476164,
+            0.007936507936507964
+        ],
+        "tried": [
+            {
+                "method": "LoFTR",
+                "norm": null,
+                "homography_det": 1.0251080772737287,
+                "homography_norm_value": 29.59889668430602,
+                "%_covering": 97.94570847243219,
+                "nb_keypoints": 4755,
+                "mean_dist": 0.02085057413964519,
+                "new_cent_int": 255.0,
+                "new_cent_loc_ratio": [
+                    0.007440476190476164,
+                    0.007936507936507964
+                ]
+            }
+        ]
+    },
+    "stats": {
+        "nb_aligned": "1",
+        "nb_non_aligned": "0",
+        "nb_fake": "0",
+        "total_images": "1",
+        "homography_det": {
+            "min": "1.0251080772737287",
+            "max": "1.0251080772737287",
+            "mean": "1.0251080772737287",
+            "median": "1.0251080772737287"
+        },
+        "homography_norm_value": {
+            "min": "29.59889668430602",
+            "max": "29.59889668430602",
+            "mean": "29.59889668430602",
+            "median": "29.59889668430602"
+        },
+        "%_covering": {
+            "min": "97.94570847243219",
+            "max": "97.94570847243219",
+            "mean": "97.94570847243219",
+            "median": "97.94570847243219"
+        },
+        "nb_keypoints": {
+            "min": "4755",
+            "max": "4755",
+            "mean": "4755.0",
+            "median": "4755.0"
+        },
+        "mean_dist": {
+            "min": "0.02085057413964519",
+            "max": "0.02085057413964519",
+            "mean": "0.02085057413964519",
+            "median": "0.02085057413964519"
+        },
+        "new_cent_int": {
+            "min": "255.0",
+            "max": "255.0",
+            "mean": "255.0",
+            "median": "255.0"
+        },
+        "new_cent_loc_ratio": {
+            "min": "0.007440476190476164",
+            "max": "0.007936507936507964",
+            "mean": "0.007688492063492064",
+            "median": "0.007688492063492064"
+        },
+        "comp_time_minutes": 0.2984317302703857
+    }
+}
