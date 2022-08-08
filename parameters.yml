@@ -8,7 +8,7 @@ Alignment:
     use_mask: False # not compatible with DFM currently
     resize_image: True
 
-Masks:
+Masks: # fill only if use_mask==True ?
     mask_path : null # fill if use_different_target_ratio is False
     mask_path_4_3: # fill if use_different_target_ratio is True
     mask_path_16_9: # fill if use_different_target_ratio is True
