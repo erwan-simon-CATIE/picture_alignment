@@ -1,14 +1,17 @@
 Alignment:
-    method: 'LoFTR' # possible values: SIFT, SURF, BRISK, ORB, DFM, LoFTR
-    folder_path : './test_sample/raw_picture/'
+    method: 'LoFTR' # possible values: SIFT, SURF, BRISK, ORB, DFM, LoFTR 
+    # folder_path : './test_sample/raw_picture/'
+    # target_path : './test_sample/reference.jpg'
+    folder_path : '../data/raw_pictures/Lacanau/'
+    target_path : '../data/raw_pictures/Lacanau/1650884700.Mon.Apr.25_13_05_00.CEST.2022.lacanau.web.DavidLucy.jpg'
+    
     use_different_target_ratio: False
-    target_path: './test_sample/reference.jpg' # if use_different_target_ratio is False
     target_path_4_3: # fill if use_different_target_ratio is True
     target_path_16_9: # fill if use_different_target_ratio is True
     use_mask: False # not compatible with DFM currently
     resize_image: True
 
-Masks: # fill only if use_mask==True ?
+Masks:
     mask_path : null # fill if use_different_target_ratio is False
     mask_path_4_3: # fill if use_different_target_ratio is True
     mask_path_16_9: # fill if use_different_target_ratio is True
