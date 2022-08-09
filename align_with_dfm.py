@@ -2,35 +2,21 @@ import cv2
 import numpy as np
 import math
 
-def draw_matches(img_A, img_B, keypoints0, keypoints1):
-    
-    p1s = []
-    p2s = []
-    dmatches = []
-    sum_dist = 0
-    for i, (x1, y1) in enumerate(keypoints0):
-         
-        p1s.append(cv2.KeyPoint(x1, y1, 1))
-        p2s.append(cv2.KeyPoint(keypoints1[i][0], keypoints1[i][1], 1))
-        dist = math.sqrt((x1 - keypoints1[i][0])**2 + (y1 - keypoints1[i][1])**2)
-        sum_dist += dist
-        j = len(p1s) - 1
-        dmatches.append(cv2.DMatch(j, j, 1))
-        
-    matched_images = cv2.drawMatches(cv2.cvtColor(img_A, cv2.COLOR_RGB2BGR), p1s, 
-                                     cv2.cvtColor(img_B, cv2.COLOR_RGB2BGR), p2s, dmatches, None)
-    
-    return matched_images, len(dmatches), sum_dist
+from utils import draw_matches
 
 def align_with_dfm(fm, img_to_align, img_target, image_name, target_name, out_path_debug):
-    H, H_init, points_I, points_T, img_aligned, img_T = fm.match(img_target, img_to_align, False)
+    H, H_init, points_I, points_T, img_aligned, _ = fm.match(img_target, img_to_align, False)
     keypoints_I = points_I.T
     keypoints_T = points_T.T
 
-    matches_img, nb_matches, sum_dist = draw_matches(img_target, img_to_align, keypoints_I, keypoints_T)
+    img_to_align = cv2.cvtColor(img_to_align, cv2.COLOR_RGB2BGR)
+    img_target = cv2.cvtColor(img_target, cv2.COLOR_RGB2BGR)
+    img_aligned = cv2.cvtColor(img_aligned, cv2.COLOR_RGB2BGR)
+
+    matches_img, nb_matches, sum_dist = draw_matches(img_to_align, img_target, keypoints_I, keypoints_T)
     cv2.imwrite(f"{out_path_debug}/{image_name}_{target_name}_DFM_matches.jpg", matches_img)
     aligned_ov = img_aligned.copy()
-    cv2.addWeighted(cv2.cvtColor(img_T, cv2.COLOR_RGB2BGR), 0.5, img_aligned, 0.5, 0, aligned_ov)
+    cv2.addWeighted(img_target, 0.5, img_aligned, 0.5, 0, aligned_ov)
     cv2.imwrite(f"{out_path_debug}/{image_name}_{target_name}_overlay.jpg", aligned_ov)
 
     # Indicators calculation
@@ -55,9 +41,11 @@ def align_with_dfm(fm, img_to_align, img_target, image_name, target_name, out_pa
 
     n_white_pix = np.sum(aligned_mask == 255)
     per_white_pix = 100 * n_white_pix / (heightT * widthT)
-
+    
+    mean_dist = 1000
     if nb_matches > 0:
         mean_dist = sum_dist/nb_matches
+    
     indicators = {
         "homography_det": np.linalg.det(H),
         "homography_norm": np.linalg.norm(H),

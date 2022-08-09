@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 class DeepFeatureMatcher(torch.nn.Module):
     
     def __init__(self, model: str = 'VGG19_BN', device = None, bidirectional=True, enable_two_stage = True, 
-            ratio_th = [0.9, 0.9, 0.9, 0.9, 0.95, 1.0], force_cpu = False, findPlanarTransformation = True):
+            ratio_th = [0.9, 0.9, 0.9, 0.9, 0.95, 1.0], force_cpu = False):
         
         super(DeepFeatureMatcher, self).__init__()
         
@@ -48,7 +48,6 @@ class DeepFeatureMatcher(torch.nn.Module):
         self.enable_two_stage = enable_two_stage
         self.bidirectional = bidirectional
         self.ratio_th = np.array(ratio_th)
-        self.findPlanarTransformation = findPlanarTransformation
            
     def match(self, img_A, img_B, display_results=0, *args):
         
@@ -57,8 +56,6 @@ class DeepFeatureMatcher(torch.nn.Module):
         and match points on warped image = H * match points on image B
         H_init: stage 0 homography
         '''
-
-        print("findPlanarTransformation", self.findPlanarTransformation)
        
         # transform into pytroch tensor and pad image to a multiple of 16
         inp_A, padding_A = self.transform(img_A) 
@@ -88,10 +85,7 @@ class DeepFeatureMatcher(torch.nn.Module):
             dst = points_A.t().numpy()
             
             if points_A.size(1) >= 4:
-                if self.findPlanarTransformation:
-                    H_init, _ = cv.findHomography(src, dst, method=cv.RANSAC, ransacReprojThreshold=16*np.sqrt(2)+1, maxIters=5000, confidence=0.9999)
-                else:
-                    H_init, _ = cv.findFundamentalMat(src, dst, method=cv.FM_RANSAC, param1=16*np.sqrt(2)+1, param2=0.9999)
+                H_init, _ = cv.findHomography(src, dst, method=cv.RANSAC, ransacReprojThreshold=16*np.sqrt(2)+1, maxIters=5000, confidence=0.9999)
                
             # opencv might return None for H, check for None
             H_init = np.eye(3, dtype=np.double) if H_init is None else H_init
@@ -151,10 +145,7 @@ class DeepFeatureMatcher(torch.nn.Module):
         dst = points_A.t().numpy()
         
         if points_A.size(1) >= 4:
-            if self.findPlanarTransformation:
-                H, _ = cv.findHomography(src, dst, method=cv.RANSAC, ransacReprojThreshold=3.0, maxIters=5000, confidence=0.9999)
-            else:
-                H, _ = cv.findFundamentalMat(src, dst, method=cv.FM_RANSAC, param1=3.0, param2=0.9999)
+            H, _ = cv.findHomography(src, dst, method=cv.RANSAC, ransacReprojThreshold=3.0, maxIters=5000, confidence=0.9999)
           
         # opencv might return None for H, check for None
         H = np.eye(3, dtype=np.double) if H is None else H
