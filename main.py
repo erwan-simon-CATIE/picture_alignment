@@ -67,8 +67,8 @@ def batch_test():
     folder_path = params["Alignment"]["folder_path"]
     use_mask = params["Alignment"]["use_mask"]
     
-
-    out_path = folder_path + "/results"
+    timestamp = time.strftime("%Y/%m/%d - %H:%M:%S", time.localtime())
+    out_path = folder_path + "/results/" + timestamp
     try:
         os.makedirs(out_path)    
         print("Directory " , out_path,  " created ")
@@ -318,7 +318,7 @@ def batch_test():
             else:
                 print(f"Image {image_name} aligned with {best_method_name}, "\
                   f"{best_norm_name} with score {best_indicators['homography_norm']}")
-                cv2.imwrite(f"{out_path}/{image_name}_{target_name}_aligned_with_{best_method_name}_{best_norm_name}_.jpg",
+                cv2.imwrite(f"{out_path}/Aligned/{image_name}_{target_name}_aligned_with_{best_method_name}_{best_norm_name}_.jpg",
                     best_aligned)
                 scores[image_name] = {
                     "target": target_name,
@@ -340,7 +340,7 @@ def batch_test():
             aligned_ov = best_aligned.copy()
 
             cv2.addWeighted(target, 0.5, best_aligned, 0.5, 0, aligned_ov)
-            cv2.imwrite(f"{out_path}/{image_name}_{target_name}_{best_method_name}_{best_norm_name}_overlay.jpg", aligned_ov)
+            cv2.imwrite(f"{out_path}/Overlay/{image_name}_{target_name}_{best_method_name}_{best_norm_name}_overlay.jpg", aligned_ov)
             with open(out_path + '/scores.json', 'w', encoding="utf-8") as outfile:
                 json.dump(scores, outfile, indent=4)
 
