@@ -67,20 +67,18 @@ def batch_test():
     folder_path = params["Alignment"]["folder_path"]
     use_mask = params["Alignment"]["use_mask"]
     
-    timestamp = time.strftime("%Y/%m/%d - %H:%M:%S", time.localtime())
-    out_path = folder_path + "/results/" + timestamp
-    try:
-        os.makedirs(out_path)    
-        print("Directory " , out_path,  " created ")
-    except FileExistsError:
-        pass
+    timestamp = time.strftime("%Y.%m.%d_%H.%M.%S", time.localtime())
+    out_path_root = folder_path + "/results_" + timestamp
+    out_path_aligned = out_path_root + "/aligned"
+    out_path_overlay = out_path_root + "/overlay"
+    out_path_debug = out_path_root + "/debug"
     
-    out_path_debug = out_path + "/debug"
-    try:
-        os.makedirs(out_path_debug)    
-        print("Directory " , out_path_debug,  " created ")
-    except FileExistsError:
-        pass
+    for folder in [out_path_root, out_path_aligned, out_path_overlay, out_path_debug]:
+        try:
+            os.makedirs(folder)    
+            print("Directory " , folder,  " created ")
+        except FileExistsError:
+            pass
 
     use_different_target_ratio = params["Alignment"]["use_different_target_ratio"]
 
@@ -96,8 +94,8 @@ def batch_test():
         target_name_4_3 = os.path.splitext(os.path.basename(target_path_4_3))[0]
         target_name_16_9 = os.path.splitext(os.path.basename(target_path_16_9))[0]
 
-        copyfile(target_path_4_3, f"{out_path}/target_{target_name_4_3}.jpg")
-        copyfile(target_path_16_9, f"{out_path}/target_{target_name_16_9}.jpg")
+        copyfile(target_path_4_3, f"{out_path_root}/target_{target_name_4_3}.jpg")
+        copyfile(target_path_16_9, f"{out_path_root}/target_{target_name_16_9}.jpg")
         
         target_4_3 = cv2.imread(target_path_4_3, cv2.IMREAD_COLOR)
         target_16_9 = cv2.imread(target_path_16_9, cv2.IMREAD_COLOR)
@@ -115,7 +113,7 @@ def batch_test():
         print(f"Target name 16/9: {target_name_16_9}")
     else:
         target_name = os.path.splitext(os.path.basename(target_path))[0]
-        copyfile(target_path, f"{out_path}/target_{target_name}.jpg")
+        copyfile(target_path, f"{out_path_root}/target_{target_name}.jpg")
 
         target = cv2.imread(target_path, cv2.IMREAD_COLOR)
     
@@ -129,9 +127,9 @@ def batch_test():
 
     target_gray = cv2.cvtColor(target, cv2.COLOR_BGR2GRAY)
 
-    if os.path.isfile(out_path + '/scores.json'):
+    if os.path.isfile(out_path_root + '/scores.json'):
         try:
-            with open(out_path + '/scores.json', encoding="utf-8") as json_file:
+            with open(out_path_root + '/scores.json', encoding="utf-8") as json_file:
                 scores = json.load(json_file)
         except FileNotFoundError as e:
                 print("Exception occured, FileNotFoundError:", e)
@@ -196,7 +194,7 @@ def batch_test():
                     print("Exception occured, RuntimeError:", e)
                     print(traceback.format_exc())
                     scores[image_name].update({"aligned": False, "exception": str(e)})
-                    with open(out_path + '/scores.json', 'w', encoding="utf-8") as outfile:
+                    with open(out_path_root + '/scores.json', 'w', encoding="utf-8") as outfile:
                         json.dump(scores, outfile, indent=4)
                     continue
             elif default_method_name == "LoFTR":
@@ -207,7 +205,7 @@ def batch_test():
                     print("Exception occured, RuntimeError:", e)
                     print(traceback.format_exc())
                     scores[image_name].update({"aligned": False, "exception": str(e)})
-                    with open(out_path + '/scores.json', 'w', encoding="utf-8") as outfile:
+                    with open(out_path_root + '/scores.json', 'w', encoding="utf-8") as outfile:
                         json.dump(scores, outfile, indent=4)
                     continue
             else:
@@ -221,7 +219,7 @@ def batch_test():
                     print("Exception occured, ValueError:", e)
                     print(traceback.format_exc())
                     scores[image_name].update({"aligned": False, "is_fake": True, "exception": str(e)})
-                    with open(out_path + '/scores.json', 'w', encoding="utf-8") as outfile:
+                    with open(out_path_root + '/scores.json', 'w', encoding="utf-8") as outfile:
                         json.dump(scores, outfile, indent=4)
                     continue
 
@@ -264,7 +262,7 @@ def batch_test():
                         scores[image_name].update({"aligned":False, "is_fake": True, "exception": str(e)})
                         if len(tried) > 0:
                             scores[image_name].update({"tried": tried})
-                        with open(out_path + '/scores.json', 'w', encoding="utf-8") as outfile:
+                        with open(out_path_root + '/scores.json', 'w', encoding="utf-8") as outfile:
                             json.dump(scores, outfile, indent=4)
                         continue
                     tried.append({
@@ -299,7 +297,7 @@ def batch_test():
                 print(float(best_indicators["projected_center_location_dist_ratio"][0]), float(params["Filter"]["projected_center_location_dist_ratio_max"]))
                 print(float(best_indicators["projected_center_location_dist_ratio"][1]), float(params["Filter"]["projected_center_location_dist_ratio_max"]))
                 print(f"Failed to align image {image_name}")
-                cv2.imwrite(f"{out_path}/{image_name}_{target_name}_tried_to_align_with_{best_method_name}_{best_norm_name}_.jpg",
+                cv2.imwrite(f"{out_path_aligned}/{image_name}_{target_name}_tried_to_align_with_{best_method_name}_{best_norm_name}_.jpg",
                     best_aligned)
                 scores[image_name] = {
                     "target":target_name,
@@ -318,7 +316,7 @@ def batch_test():
             else:
                 print(f"Image {image_name} aligned with {best_method_name}, "\
                   f"{best_norm_name} with score {best_indicators['homography_norm']}")
-                cv2.imwrite(f"{out_path}/Aligned/{image_name}_{target_name}_aligned_with_{best_method_name}_{best_norm_name}_.jpg",
+                cv2.imwrite(f"{out_path_aligned}/{image_name}_{target_name}_aligned_with_{best_method_name}_{best_norm_name}_.jpg",
                     best_aligned)
                 scores[image_name] = {
                     "target": target_name,
@@ -340,11 +338,12 @@ def batch_test():
             aligned_ov = best_aligned.copy()
 
             cv2.addWeighted(target, 0.5, best_aligned, 0.5, 0, aligned_ov)
-            cv2.imwrite(f"{out_path}/Overlay/{image_name}_{target_name}_{best_method_name}_{best_norm_name}_overlay.jpg", aligned_ov)
-            with open(out_path + '/scores.json', 'w', encoding="utf-8") as outfile:
+            cv2.imwrite(f"{out_path_overlay}/{image_name}_{target_name}_{best_method_name}_{best_norm_name}_overlay.jpg", aligned_ov)
+            # TODO annuler les modif de nom de fichier, pr remplacer par modif du path sur le dossier
+            with open(out_path_root + '/scores.json', 'w', encoding="utf-8") as outfile:
                 json.dump(scores, outfile, indent=4)
 
-    export_stats(out_path + '/scores.json', start_time)
+    export_stats(out_path_root + '/scores.json', start_time)
     
 
 if __name__ == "__main__":

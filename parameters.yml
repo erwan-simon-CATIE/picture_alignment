@@ -1,10 +1,22 @@
 Alignment:
     method: 'LoFTR' # possible values: SIFT, SURF, BRISK, ORB, DFM, LoFTR 
+    
+    # TEST
     # folder_path : './test_sample/raw_picture/'
     # target_path : './test_sample/reference.jpg'
-    folder_path : '../data/raw_pictures/Lacanau/'
-    target_path : '../data/raw_pictures/Lacanau/1650884700.Mon.Apr.25_13_05_00.CEST.2022.lacanau.web.DavidLucy.jpg'
     
+    # LACANAU
+    folder_path : '../data/Lacanau/raw_pictures/'
+    target_path : '../data/Lacanau/reference_1640103300.Tue.Dec.21_17_15_00.CET.2021.lacanau.web.Anonymous.jpg'
+    
+    # LAFITENIA
+    # folder_path : '../data/Lafitenia/raw_pictures/'
+    # target_path : '../data/Lafitenia/reference_1640089980.Tue.Dec.21_14_33_00.CEST.2021.lafitenia.snap.ClementGoldman.jpg'
+
+    # SANTOCHA
+    # folder_path : '../data/Santocha/raw_pictures/'
+    # target_path : '../data/Santocha/reference_1637681040.Tue.Nov.23_17_24_00.CEST.2021.santocha.snap.ClementG.jpg'
+
     use_different_target_ratio: False
     target_path_4_3: # fill if use_different_target_ratio is True
     target_path_16_9: # fill if use_different_target_ratio is True
