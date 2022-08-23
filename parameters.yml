@@ -56,8 +56,8 @@ Retry:
     projected_center_location_dist_ratio_max: 0.08
 
 Filter:
-    homography_norm_max: 500
-    percent_covering_min: 80
-    mean_dist_between_keypoints: 0.4
-    projected_center_intensity_min:
+    homography_norm_max: 300
+    percent_covering_min: 50
+    mean_dist_between_keypoints: 0.2
+    projected_center_intensity_min: 240
     projected_center_location_dist_ratio_max: 0.05
